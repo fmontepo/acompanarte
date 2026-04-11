@@ -1,0 +1,20 @@
+from .actividad_router import router as actividad_router
+from .administrador_router import router as admistrador_router
+from .alerta_router import router as alerta_router
+from .auditoria_router import router as auditoria_router
+from .consentimiento_router import router as consentimiento_router
+from .equipo_router import router as equipo_router
+from .familiar_router import router as familiar_router
+from .miembro_equipo_router import router as miembro_equipo_router
+from .paciente_router import router as paciente_router
+from .parentesco_router import router as parentesco_router
+from .permiso_router import router as permiso_router
+from .progreso_router import router as progreso_router
+from .recurso_router import router as recurso_router
+from .registro_router import router as registro_router
+from .sesion_ia_router import router as sesion_ia_router
+from .mensaje_ia_router import router as mensaje_ia_router
+from .terapeuta_router import router as terapeuta_router
+from .usuario_router import router as usuario_router
+from .vinculo_router import router as vinculo_router
+

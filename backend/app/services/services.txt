@@ -1,0 +1,19 @@
+ El volumen de la unidad C no tiene etiqueta.
+ El n£mero de serie del volumen es: 5AD6-F641
+
+ Directorio de C:\Proyecto\acompa¤arte\backend\app\services
+
+08/04/2026  21:13    <DIR>          .
+08/04/2026  21:13    <DIR>          ..
+07/04/2026  06:44               176 auditoria_service.py
+07/04/2026  06:36               660 base_services.py
+07/04/2026  06:40               171 familiar_service.py
+31/03/2026  00:33               221 ia_service.py
+06/04/2026  23:16               171 paciente_service.py
+07/04/2026  06:43               200 permiso_service.py
+07/04/2026  06:42               205 registro_service.py
+08/04/2026  21:13                 0 services.txt
+07/04/2026  06:38               166 usario_service.py
+07/04/2026  06:41               191 vinculo_sevice.py
+              10 archivos          2.161 bytes
+               2 dirs  360.184.537.088 bytes libres

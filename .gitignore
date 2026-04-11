@@ -1,0 +1,30 @@
+gitignore# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Entorno
+.env
+
+# Node / Frontend
+node_modules/
+dist/
+.eslintcache
+
+# Modelos IA (demasiado grandes para Git)
+*.gguf
+*.bin
+models/
+
+# Archivos temporales / basura
+*.zip
+*- copia*
+*-copia*
+esquema.txt
+routers.txt
+
+# Docker
+docker-compose\ -\ copia.yml
