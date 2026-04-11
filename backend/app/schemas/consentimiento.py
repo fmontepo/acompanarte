@@ -1,21 +1,33 @@
+# app/schemas/consentimiento.py
+# Consentimiento informado — Ley 25.326 Art. 6
 from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional
 
 
-class ConsentimientoBase(BaseModel):
-    pass
+class ConsentimientoCreate(BaseModel):
+    usuario_id: UUID
+    version: str
+    aceptado: bool = True
+    ip_origen: Optional[str] = None
+    user_agent: Optional[str] = None
 
 
-class ConsentimientoCreate(ConsentimientoBase):
-    pass
+class ConsentimientoRevocar(BaseModel):
+    usuario_id: UUID
+    version: str
 
 
-class ConsentimientoRead(ConsentimientoBase):
-    id: Optional[UUID]
-    creado_en: Optional[datetime] = None
-    actualizado_en: Optional[datetime] = None
+class ConsentimientoRead(BaseModel):
+    id: UUID
+    usuario_id: UUID
+    version: str
+    aceptado: bool
+    ip_origen: Optional[str] = None
+    user_agent: Optional[str] = None
+    revocado: bool
+    revocado_en: Optional[datetime] = None
+    aceptado_en: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

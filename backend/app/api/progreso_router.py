@@ -1,13 +1,9 @@
-# app/api/progreso_router.py
-
 from app.api.base_router import create_router
-from app.schemas.progreso import ProgresoCreate, ProgresoRead
-from app.services.progreso_service import progreso_service
+from app.schemas.progreso_actividad import ProgresoActividadCreate, ProgresoActividadRead
+from app.services.base_service import BaseService
+from app.models.progresoActividad import ProgresoActividad
 
 router = create_router(
-    None,
-    ProgresoCreate,
-    ProgresoRead,
-    progreso_service,
-    "/progreso"
+    ProgresoActividad, ProgresoActividadCreate, ProgresoActividadRead,
+    BaseService(ProgresoActividad), "/progreso",
 )

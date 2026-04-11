@@ -1,21 +1,12 @@
+# app/schemas/localidad.py
 from pydantic import BaseModel
-from uuid import UUID
-from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional
 
 
-class LocalidadBase(BaseModel):
-    pass
+class LocalidadRead(BaseModel):
+    codigo_postal: str
+    sub_codigo_postal: str
+    nombre: str
+    id_provincia: str
 
-
-class LocalidadCreate(LocalidadBase):
-    pass
-
-
-class LocalidadRead(LocalidadBase):
-    id: Optional[UUID]
-    creado_en: Optional[datetime] = None
-    actualizado_en: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

@@ -1,13 +1,23 @@
-# app/api/mensaje_ia_router.py
+from typing import List
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.db.session import get_db
+from app.models.ia import MensajeIA
+from app.schemas.mensaje_ia import MensajeIARead
+from app.api.deps import get_current_user
 
-from app.api.base_router import create_router
-from app.schemas.mensaje_ia import MensajeIACreate, MensajeIARead
-from app.services.mensaje_ia_service import mensaje_ia_service
+router = APIRouter(prefix="/mensajes-ia", tags=["Mensajes IA"])
 
-router = create_router(
-    None,
-    MensajeIACreate,
-    MensajeIARead,
-    mensaje_ia_service,
-    "/mensajes-ia"
-)
+@router.get("/{sesion_id}", response_model=List[MensajeIARead])
+async def listar_mensajes(
+    sesion_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    result = await db.execute(
+        select(MensajeIA)
+        .where(MensajeIA.sesion_id == sesion_id)
+        .order_by(MensajeIA.enviado_en.asc())
+    )
+    return result.scalars().all()

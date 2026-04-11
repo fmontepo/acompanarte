@@ -1,21 +1,36 @@
-from pydantic import BaseModel
+# app/schemas/equipo_terapeutico.py
+from pydantic import BaseModel, field_validator
 from uuid import UUID
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional
 
 
-class EquipoTerapeuticoBase(BaseModel):
-    pass
+class EquipoTerapeuticoCreate(BaseModel):
+    paciente_id: UUID
+    nombre: str
+    descripcion: Optional[str] = None
+
+    @field_validator("nombre")
+    @classmethod
+    def no_vacio(cls, v):
+        if not v.strip():
+            raise ValueError("El nombre no puede estar vacío")
+        return v.strip()
 
 
-class EquipoTerapeuticoCreate(EquipoTerapeuticoBase):
-    pass
+class EquipoTerapeuticoUpdate(BaseModel):
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    activo: Optional[bool] = None
 
 
-class EquipoTerapeuticoRead(EquipoTerapeuticoBase):
-    id: Optional[UUID]
-    creado_en: Optional[datetime] = None
-    actualizado_en: Optional[datetime] = None
+class EquipoTerapeuticoRead(BaseModel):
+    id: UUID
+    paciente_id: UUID
+    nombre: str
+    descripcion: Optional[str] = None
+    activo: bool
+    creado_en: datetime
+    actualizado_en: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

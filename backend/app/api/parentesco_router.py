@@ -1,13 +1,18 @@
-# app/api/parentesco_router.py
+from typing import List
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.db.session import get_db
+from app.models.parentesco import Parentesco
+from app.schemas.parentesco import ParentescoRead
+from app.api.deps import get_current_user
 
-from app.api.base_router import create_router
-from app.schemas.parentesco import ParentescoCreate, ParentescoRead
-from app.services.parentesco_service import parentesco_service
+router = APIRouter(prefix="/parentescos", tags=["Parentescos"])
 
-router = create_router(
-    None,
-    ParentescoCreate,
-    ParentescoRead,
-    parentesco_service,
-    "/parentescos"
-)
+@router.get("/", response_model=List[ParentescoRead])
+async def listar_parentescos(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    result = await db.execute(select(Parentesco).order_by(Parentesco.nombre))
+    return result.scalars().all()

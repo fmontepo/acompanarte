@@ -3,40 +3,65 @@ version: "3.9"
 services:
 
   db:
-    image: ankane/pgvector:latest
-    container_name: db
-    restart: always
+    image: pgvector/pgvector:pg15
+    container_name: acompanarte_db
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: app
-      POSTGRES_DB: acompanarte
+      POSTGRES_USER: ${DB_USER:-acomp_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-acomp_pass}
+      POSTGRES_DB: ${DB_NAME:-acompanarte_db}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-acomp_user} -d ${DB_NAME:-acompanarte_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
-    build: ./backend
-    container_name: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: acompanarte_backend
+    restart: unless-stopped
     depends_on:
-        - db
+      db:
+        condition: service_healthy
     ports:
-        - "8000:8000"
+      - "8000:8000"
     volumes:
-        - ./backend:/app
+      - ./backend:/app
     environment:
-        - DATABASE_URL=postgresql://app:app@db:5432/acompanarte
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-acomp_user}:${DB_PASSWORD:-acomp_pass}@db:5432/${DB_NAME:-acompanarte_db}
+      SECRET_KEY: ${SECRET_KEY:-cambia_esto_en_produccion}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-mistral:7b-instruct}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-cambia_esto_en_produccion}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
-  ia:
-    image: python:3.11
-    container_name: ia
-    volumes:
-      - ./ia:/app
-    working_dir: /app
-    command: sh -c "pip install fastapi uvicorn && uvicorn main:app --host 0.0.0.0 --port 9000"
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: acompanarte_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
     ports:
-      - "9000:9000"
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    environment:
+      VITE_API_URL: http://localhost:8000/api/v1
 
 volumes:
   postgres_data:

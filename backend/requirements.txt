@@ -1,8 +1,39 @@
-fastapi
-uvicorn
-sqlalchemy
-psycopg2-binary
-alembic
-requests
-pgvector
-python-dotenv
+# ============================================================
+# Acompañarte — Backend dependencies
+# Python 3.11+
+# ============================================================
+
+# --- Web framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# --- Base de datos async ---
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+pgvector==0.3.6
+
+# --- Migraciones ---
+alembic==1.14.0
+
+# --- Autenticación y seguridad ---
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1
+python-multipart==0.0.20
+
+# --- Variables de entorno ---
+python-dotenv==1.0.1
+
+# --- IA — embeddings locales ---
+sentence-transformers==3.3.1
+
+# --- IA — cliente HTTP para Ollama (corre en Windows) ---
+# Ollama se llama via REST, no necesitamos llama-cpp-python
+httpx==0.28.1
+
+# --- Cifrado de campos sensibles (PII) ---
+cryptography==44.0.0
+
+# --- Validación ---
+pydantic[email]==2.10.3
+pydantic-settings==2.7.0

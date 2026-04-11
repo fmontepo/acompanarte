@@ -1,13 +1,9 @@
-# app/api/vinculo_router.py
-
 from app.api.base_router import create_router
-from app.schemas.vinculo import VinculoCreate, VinculoRead
-from app.services.vinculo_service import vinculo_service
+from app.schemas.vinculo_paciente import VinculoPacienteCreate, VinculoPacienteRead
+from app.services.base_service import BaseService
+from app.models.vinculoPaciente import VinculoPaciente
 
 router = create_router(
-    None,
-    VinculoCreate,
-    VinculoRead,
-    vinculo_service,
-    "/vinculos"
+    VinculoPaciente, VinculoPacienteCreate, VinculoPacienteRead,
+    BaseService(VinculoPaciente), "/vinculos",
 )

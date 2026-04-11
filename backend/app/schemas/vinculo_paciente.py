@@ -1,21 +1,34 @@
+# app/schemas/vinculo_paciente.py
 from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional
 
 
-class VinculoPacienteBase(BaseModel):
-    pass
+class VinculoPacienteCreate(BaseModel):
+    familiar_id: UUID
+    paciente_id: UUID
+    id_parentesco: str
+    es_tutor_legal: bool = False
+    autorizado_medico: bool = False
 
 
-class VinculoPacienteCreate(VinculoPacienteBase):
-    pass
+class VinculoPacienteUpdate(BaseModel):
+    es_tutor_legal: Optional[bool] = None
+    autorizado_medico: Optional[bool] = None
+    activo: Optional[bool] = None
+    hasta: Optional[datetime] = None
 
 
-class VinculoPacienteRead(VinculoPacienteBase):
-    id: Optional[UUID]
-    creado_en: Optional[datetime] = None
-    actualizado_en: Optional[datetime] = None
+class VinculoPacienteRead(BaseModel):
+    id: UUID
+    familiar_id: UUID
+    paciente_id: UUID
+    id_parentesco: str
+    es_tutor_legal: bool
+    autorizado_medico: bool
+    activo: bool
+    desde: datetime
+    hasta: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

@@ -1,13 +1,9 @@
-# app/api/permiso_router.py
-
 from app.api.base_router import create_router
-from app.schemas.permiso import PermisoCreate, PermisoRead
-from app.services.permiso_service import permiso_service
+from app.schemas.permiso_seguimiento import PermisoSeguimientoCreate, PermisoSeguimientoRead
+from app.services.base_service import BaseService
+from app.models.permisoSeguimiento import PermisoSeguimiento
 
 router = create_router(
-    None,
-    PermisoCreate,
-    PermisoRead,
-    permiso_service,
-    "/permisos"
+    PermisoSeguimiento, PermisoSeguimientoCreate, PermisoSeguimientoRead,
+    BaseService(PermisoSeguimiento), "/permisos",
 )

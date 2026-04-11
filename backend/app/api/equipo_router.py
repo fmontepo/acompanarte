@@ -1,12 +1,9 @@
-# app/api/equipo_router.py
-
 from app.api.base_router import create_router
-from app.schemas.equipo import EquipoCreate, EquipoRead
-from app.services.equipoTerapeutico_service import equipoTerapeutico_service
+from app.schemas.equipo_terapeutico import EquipoTerapeuticoCreate, EquipoTerapeuticoRead
+from app.services.base_service import BaseService
+from app.models.equipoTerapeutico import EquipoTerapeutico
+
 router = create_router(
-    None,
-    EquipoCreate,
-    EquipoRead,
-    equipoTerapeutico_service,
-    "/equipos"
+    EquipoTerapeutico, EquipoTerapeuticoCreate, EquipoTerapeuticoRead,
+    BaseService(EquipoTerapeutico), "/equipos",
 )

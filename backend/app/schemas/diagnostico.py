@@ -1,21 +1,27 @@
-from pydantic import BaseModel
+# app/schemas/diagnostico.py
+from pydantic import BaseModel, field_validator
 from uuid import UUID
-from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional
 
 
-class DiagnosticoBase(BaseModel):
-    pass
+class DiagnosticoCreate(BaseModel):
+    codigo: Optional[str] = None
+    nombre: str
+    descripcion: Optional[str] = None
+
+    @field_validator("nombre")
+    @classmethod
+    def no_vacio(cls, v):
+        if not v.strip():
+            raise ValueError("El nombre no puede estar vacío")
+        return v.strip()
 
 
-class DiagnosticoCreate(DiagnosticoBase):
-    pass
+class DiagnosticoRead(BaseModel):
+    id: UUID
+    codigo: Optional[str] = None
+    nombre: str
+    descripcion: Optional[str] = None
+    activo: bool
 
-
-class DiagnosticoRead(DiagnosticoBase):
-    id: Optional[UUID]
-    creado_en: Optional[datetime] = None
-    actualizado_en: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

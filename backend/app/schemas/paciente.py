@@ -1,21 +1,34 @@
-from pydantic import BaseModel
+# app/schemas/paciente.py
+
+from pydantic import BaseModel, field_validator
 from uuid import UUID
-from datetime import datetime
-from typing import Optional, Dict, Any
+from datetime import date, datetime
+from typing import Optional
 
 
-class PacienteBase(BaseModel):
-    pass
+class PacienteCreate(BaseModel):
+    # El nombre viene en texto plano — el service lo cifra antes de persistir
+    nombre: str
+    apellido: Optional[str] = None
+    fecha_nacimiento: Optional[date] = None
+    sexo: Optional[str] = None
+
+    @field_validator("sexo")
+    @classmethod
+    def validar_sexo(cls, v):
+        if v and v not in {"M", "F", "X"}:
+            raise ValueError("Sexo inválido. Valores: M | F | X")
+        return v
 
 
-class PacienteCreate(PacienteBase):
-    pass
+class PacienteRead(BaseModel):
+    id: UUID
+    # El nombre viene cifrado desde la DB — el service lo descifra antes de retornar
+    nombre_enc: str
+    fecha_nacimiento: Optional[date] = None
+    sexo: Optional[str] = None
+    nivel_soporte: Optional[int] = None
+    activo: bool
+    creado_en: datetime
 
-
-class PacienteRead(PacienteBase):
-    id: Optional[UUID]
-    creado_en: Optional[datetime] = None
-    actualizado_en: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
