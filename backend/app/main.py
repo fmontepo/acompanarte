@@ -94,7 +94,7 @@ app.include_router(alerta_router,          prefix=PREFIX)
 app.include_router(recurso_router,         prefix=PREFIX)
 app.include_router(consentimiento_router,  prefix=PREFIX)
 app.include_router(auditoria_router,       prefix=PREFIX)
-
+app.include_router(auth_router,            prefix=PREFIX)
 
 # ---------------------------------------------------------------------------
 # Health check — para Docker y monitoreo

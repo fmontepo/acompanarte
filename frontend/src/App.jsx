@@ -1,26 +1,13 @@
-import { useEffect, useState } from "react";
+import { AuthProvider } from './context/AuthContext'
+import AppRouter from './router/index'
+import './styles/tokens.css'
+import './styles/global.css'
+import './styles/shell.css'
 
-function App() {
-  const [mensaje, setMensaje] = useState("Cargando...");
-
-  useEffect(() => {
-    fetch("http://localhost:8000")
-      .then((res) => res.json())
-      .then((data) => {
-        setMensaje(data.mensaje);
-      })
-      .catch((error) => {
-        console.error(error);
-        setMensaje("Error al conectar con backend");
-      });
-  }, []);
-
+export default function App() {
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Frontend conectado 🚀</h1>
-      <p>{mensaje}</p>
-    </div>
-  );
+    <AuthProvider>
+      <AppRouter />
+    </AuthProvider>
+  )
 }
-
-export default App;

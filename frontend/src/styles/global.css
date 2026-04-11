@@ -1,0 +1,207 @@
+/*
+ * global.css — Reset y clases utilitarias base
+ * Migradas directamente del prototipo_final.html
+ */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+  font-family: var(--font);
+}
+
+/* ── App shell ── */
+.app-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Avatar ── */
+.av {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+.av-lg { width: 48px; height: 48px; font-size: 18px; }
+.av-tl { background: var(--teal); }
+.av-pp { background: var(--purple); }
+.av-am { background: var(--amber); }
+.av-bu { background: var(--blue); }
+.av-pk { background: var(--pink); }
+.av-gr { background: #6B7280; }
+
+/* ── Chips / badges ── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.ch-teal { background: var(--teal2); color: var(--teal3); }
+.ch-pp   { background: var(--purple2); color: var(--purple3); }
+.ch-am   { background: var(--amber2); color: var(--amber); }
+.ch-rd   { background: var(--red2); color: var(--red); }
+.ch-gray { background: var(--bg); color: var(--text2); border: 1px solid var(--border); }
+.ch-blu  { background: var(--blue2); color: var(--blue); }
+.ch-pk   { background: var(--pink2); color: var(--pink3); }
+
+/* ── Botones ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.14s;
+  font-family: var(--font);
+  text-decoration: none;
+}
+.btn-p    { background: var(--teal); color: #fff; }
+.btn-p:hover { background: var(--teal3); }
+.btn-s    { background: var(--bg); border: 1px solid var(--border2); color: var(--text2); }
+.btn-s:hover { color: var(--text); }
+.btn-g    { background: transparent; color: var(--text2); padding: 6px 10px; }
+.btn-g:hover { background: var(--bg); }
+.btn-rd   { background: var(--red2); border: 1px solid #f5b8b8; color: var(--red); }
+.btn-am   { background: var(--amber2); border: 1px solid #f0cb8a; color: var(--amber); }
+.btn-pp   { background: var(--purple2); border: 1px solid #c4bff5; color: var(--purple); }
+.btn-sm   { padding: 5px 10px; font-size: 12px; }
+.btn-xs   { padding: 3px 8px; font-size: 11px; }
+.btn-full { width: 100%; justify-content: center; }
+
+/* ── Cards ── */
+.card    { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.card-sm { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+
+/* ── Grids ── */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+/* ── Stats ── */
+.stat { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+.sn   { font-size: 28px; font-weight: 700; line-height: 1; }
+.sl   { font-size: 12px; color: var(--text3); margin-top: 4px; }
+.sc   { font-size: 11px; margin-top: 6px; }
+
+/* ── Colores utilitarios ── */
+.cteal { color: var(--teal); }
+.camb  { color: var(--amber); }
+.cred  { color: var(--red); }
+.cpp   { color: var(--purple); }
+
+/* ── Progress bar ── */
+.pbar { height: 6px; background: var(--bg); border-radius: 10px; overflow: hidden; margin-top: 4px; }
+.pf   { height: 100%; border-radius: 10px; background: var(--teal); transition: width 0.5s; }
+.pf-a { background: var(--amber); }
+.pf-p { background: var(--purple); }
+.pf-r { background: var(--red); }
+
+/* ── Formularios ── */
+.fg { display: flex; flex-direction: column; gap: 5px; }
+.fl { font-size: 12px; font-weight: 500; color: var(--text2); }
+.fi, .fs, .fta {
+  padding: 8px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  font-size: 13px;
+  background: var(--bg2);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.14s;
+  width: 100%;
+  font-family: var(--font);
+}
+.fi:focus, .fs:focus, .fta:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(29, 158, 117, 0.1);
+}
+.fta { resize: vertical; min-height: 80px; }
+.fr2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fr3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+/* ── Helpers ── */
+.flex  { display: flex; }
+.ic    { align-items: center; }
+.jb    { justify-content: space-between; }
+.col   { flex-direction: column; }
+.g6    { gap: 6px; }
+.g8    { gap: 8px; }
+.g10   { gap: 10px; }
+.g12   { gap: 12px; }
+.g16   { gap: 16px; }
+.mb8   { margin-bottom: 8px; }
+.mb12  { margin-bottom: 12px; }
+.mb16  { margin-bottom: 16px; }
+.mb20  { margin-bottom: 20px; }
+.ts    { font-size: 12px; }
+.txs   { font-size: 11px; }
+.tm    { color: var(--text3); }
+.f5    { font-weight: 500; }
+.f6    { font-weight: 600; }
+.w100  { width: 100%; }
+.divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+/* ── Banners informativos ── */
+.disc {
+  background: var(--amber2);
+  border: 1px solid #f0cb8a;
+  border-radius: 7px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--amber);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  line-height: 1.5;
+}
+.disc-rd { background: var(--red2); border-color: #f5b8b8; color: var(--red); }
+.disc-tl { background: var(--teal2); border-color: #a5ddc8; color: var(--teal3); }
+.disc-pp { background: var(--purple2); border-color: #c4bff5; color: var(--purple3); }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%) translateY(60px);
+  background: var(--text);
+  color: #fff;
+  font-size: 13px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  z-index: 9999;
+  white-space: nowrap;
+}
+.toast.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
