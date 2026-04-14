@@ -1,0 +1,58 @@
+# app/models/progresoActividad.py
+# Registro de progreso de una actividad terapéutica realizada en casa
+# El familiar completa este registro — el terapeuta lo revisa
+
+from sqlalchemy import Column, DateTime, Text, ForeignKey, Integer, func, Index
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.orm import relationship
+import uuid
+from app.db.base import Base
+
+
+class ProgresoActividad(Base):
+    __tablename__ = "progreso_actividad"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    actividad_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("actividades_familiar.id"),
+        nullable=False,
+        index=True,
+    )
+    familiar_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("familiares.id"),
+        nullable=False,
+        index=True,
+    )
+
+    observacion = Column(Text, nullable=True, comment="Observación del familiar sobre la actividad")
+
+    # multimedia: lista de rutas a archivos subidos (fotos, videos)
+    # Estructura: [{"tipo": "imagen", "url": "...", "nombre": "..."}]
+    multimedia = Column(JSONB, nullable=True, comment="Archivos adjuntos al progreso")
+
+    # Escala de satisfacción: 1 (muy difícil) → 5 (excelente)
+    nivel_satisfaccion = Column(
+        Integer,
+        nullable=True,
+        comment="Escala 1-5: 1=muy difícil, 5=excelente",
+    )
+
+    completada_en = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+
+    __table_args__ = (
+        Index("idx_progreso_actividad_familiar", "actividad_id", "familiar_id"),
+    )
+
+    actividad = relationship("ActividadFamiliar", back_populates="progresos", lazy="selectin")
+    familiar = relationship("Familiar", lazy="selectin")
+
+    def __repr__(self):
+        return f"<ProgresoActividad satisfaccion={self.nivel_satisfaccion}>"
