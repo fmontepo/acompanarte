@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 
-const PACIENTES = ['Roberto Méndez', 'Elena Fernández']
+const PACIENTES_DEFAULT = ['Roberto Méndez', 'Elena Fernández']
 const TIPOS = ['Seguimiento', 'Evaluación', 'Observación', 'Nota de evolución']
 
 const MOCK = [
@@ -21,7 +21,7 @@ function formatFecha(iso) {
     ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function ModalNuevo({ onClose, onSave }) {
+function ModalNuevo({ onClose, onSave, pacientes }) {
   const [form, setForm] = useState({ paciente: '', tipo: 'Seguimiento', nota: '' })
   const [saving, setSaving] = useState(false)
 
@@ -47,7 +47,7 @@ function ModalNuevo({ onClose, onSave }) {
               <label className="fl">Paciente *</label>
               <select className="fs" value={form.paciente} onChange={e => setForm(f => ({ ...f, paciente: e.target.value }))}>
                 <option value="">Seleccioná…</option>
-                {PACIENTES.map(p => <option key={p} value={p}>{p}</option>)}
+                {pacientes.map(p => <option key={p.id ?? p} value={p.nombre ?? p}>{p.nombre ?? p}</option>)}
               </select>
             </div>
             <div className="fg">
@@ -81,35 +81,96 @@ function ModalNuevo({ onClose, onSave }) {
 export default function TerExtRegistros() {
   const { authFetch } = useAuth()
   const [registros, setRegistros] = useState([])
+  const [pacientes, setPacientes] = useState(PACIENTES_DEFAULT.map((n, i) => ({ id: i+1, nombre: n })))
   const [loading, setLoading]     = useState(true)
   const [modal, setModal]         = useState(false)
   const [toast, setToast]         = useState('')
+
+  function normalizeRegistro(r, pacsMap) {
+    const pac = pacsMap?.[r.paciente_id]
+    const nombre = pac?.nombre_enc || r.paciente || 'Paciente'
+    const initials = nombre.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    return {
+      id:       r.id,
+      paciente: nombre,
+      av:       r.av || initials || 'PT',
+      avClass:  r.avClass || 'av-tl',
+      tipo:     r.tipo ? (r.tipo.charAt(0).toUpperCase() + r.tipo.slice(1)) : 'Seguimiento',
+      fecha:    r.fecha_registro || r.creado_en,
+      nota:     r.contenido_enc || r.nota || '',
+      estado:   r.estado || 'completado',
+    }
+  }
 
   useEffect(() => {
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/registros/mis-registros')
-        if (res.ok) {
-          const data = await res.json()
-          setRegistros(Array.isArray(data) && data.length > 0 ? data : MOCK)
-        } else { setRegistros(MOCK) }
-      } catch { setRegistros(MOCK) }
+        const [resPacs, resRegs] = await Promise.allSettled([
+          authFetch('/api/v1/pacientes/'),
+          authFetch('/api/v1/registros/'),
+        ])
+        let pacsMap = {}
+        if (resPacs.status === 'fulfilled' && resPacs.value.ok) {
+          const pacs = await resPacs.value.json()
+          if (Array.isArray(pacs) && pacs.length > 0) {
+            setPacientes(pacs.map(p => ({ id: p.id, nombre: p.nombre_enc || 'Paciente' })))
+            pacs.forEach(p => { pacsMap[p.id] = p })
+          }
+        }
+        if (resRegs.status === 'fulfilled' && resRegs.value.ok) {
+          const data = await resRegs.value.json()
+          const norm = Array.isArray(data) ? data.map(r => normalizeRegistro(r, pacsMap)) : []
+          setRegistros(norm)
+        } else { setRegistros([]) }
+      } catch { setRegistros(MOCK) }  // error de red → mock
       finally { setLoading(false) }
     }
     cargar()
   }, [authFetch])
 
-  function handleSave(form) {
-    const pac = PACIENTES.find(p => p === form.paciente)
-    const initials = pac ? pac.split(' ').map(w => w[0]).join('') : '?'
-    const avClass  = initials === 'RM' ? 'av-tl' : 'av-pp'
-    setRegistros(prev => [{
-      id: Date.now(), paciente: form.paciente, av: initials, avClass,
-      tipo: form.tipo, fecha: new Date().toISOString(), nota: form.nota, estado: 'completado',
-    }, ...prev])
+  const TIPO_MAP = {
+    'Seguimiento':       'evolucion',
+    'Evaluación':        'observacion',
+    'Observación':       'observacion',
+    'Nota de evolución': 'evolucion',
+  }
+
+  async function handleSave(form) {
+    const nombre   = form.paciente
+    const initials = nombre ? nombre.split(' ').map(w => w[0]).join('') : '?'
+    const avClass  = 'av-tl'
+
+    // Buscar el paciente_id desde el estado
+    const pac = pacientes.find(p => (p.nombre ?? p) === nombre)
+
+    try {
+      const res = await authFetch('/api/v1/registros/', {
+        method: 'POST',
+        body: JSON.stringify({
+          paciente_id:    pac?.id ?? null,
+          contenido:      form.nota,
+          tipo:           TIPO_MAP[form.tipo] ?? 'evolucion',
+          visibilidad:    'equipo',
+          fecha_registro: new Date().toISOString().slice(0, 10),
+        }),
+      })
+      const data = res.ok ? await res.json() : null
+      const nuevo = {
+        id: data?.id ?? Date.now(), paciente: nombre, av: initials, avClass,
+        tipo: form.tipo, fecha: data?.creado_en ?? new Date().toISOString(),
+        nota: form.nota, estado: 'completado',
+      }
+      setRegistros(prev => [nuevo, ...prev])
+      setToast(res.ok ? 'Registro guardado correctamente.' : 'Guardado localmente (error de servidor).')
+    } catch {
+      setRegistros(prev => [{
+        id: Date.now(), paciente: nombre, av: initials, avClass,
+        tipo: form.tipo, fecha: new Date().toISOString(), nota: form.nota, estado: 'completado',
+      }, ...prev])
+      setToast('Guardado localmente (sin conexión).')
+    }
     setModal(false)
-    setToast('Registro guardado correctamente.')
     setTimeout(() => setToast(''), 2500)
   }
 
@@ -159,7 +220,7 @@ export default function TerExtRegistros() {
         </div>
       )}
 
-      {modal && <ModalNuevo onClose={() => setModal(false)} onSave={handleSave} />}
+      {modal && <ModalNuevo pacientes={pacientes} onClose={() => setModal(false)} onSave={handleSave} />}
     </div>
   )
 }

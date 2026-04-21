@@ -1,17 +1,52 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '../../../context/AuthContext'
 
-const ARTICULOS = [
-  { id: 1, titulo: 'Técnicas de redirección en demencia',         categoria: 'Demencia',      resumen: 'Estrategias basadas en evidencia para manejar episodios de agitación y desorientación en pacientes con deterioro cognitivo.', tags: ['agitación', 'redirección', 'demencia'], fecha: '2025-11', destacado: true },
-  { id: 2, titulo: 'Comunicación efectiva con el familiar cuidador', categoria: 'Familia',    resumen: 'Guía para establecer comunicación clara y empática con los familiares, reduciendo la carga emocional y mejorando la adherencia al plan terapéutico.', tags: ['familia', 'comunicación', 'cuidador'], fecha: '2025-10', destacado: true },
-  { id: 3, titulo: 'Ejercicios cognitivos adaptados por nivel',   categoria: 'Cognitiva',     resumen: 'Banco de actividades cognitivas clasificadas por nivel de deterioro (leve, moderado, severo), con instrucciones para familiares.', tags: ['memoria', 'ejercicios', 'cognitiva'], fecha: '2025-09', destacado: false },
-  { id: 4, titulo: 'Evaluación de bienestar — escala CMAI',       categoria: 'Evaluación',    resumen: 'Protocolo de uso de la escala CMAI para evaluar agitación en adultos mayores con demencia. Incluye interpretación de resultados.', tags: ['evaluación', 'escala', 'bienestar'], fecha: '2025-08', destacado: false },
-  { id: 5, titulo: 'Plan de cuidados personalizado — plantilla',  categoria: 'Herramientas', resumen: 'Plantilla estructurada para armar el plan de cuidados individualizado, con campos para objetivos, actividades, frecuencia y seguimiento.', tags: ['plan', 'plantilla', 'herramienta'], fecha: '2025-07', destacado: false },
-  { id: 6, titulo: 'Parkinson y deterioro cognitivo — manejo',    categoria: 'Neurología',    resumen: 'Abordaje terapéutico integral del paciente con Parkinson y compromiso cognitivo asociado. Farmacología, fisioterapia y terapia ocupacional.', tags: ['parkinson', 'neurología', 'fisioterapia'], fecha: '2025-06', destacado: false },
+const MOCK = [
+  { id: 1, titulo: 'Técnicas de redirección en TEA', categoria: 'Guía', resumen: 'Estrategias basadas en evidencia para manejar episodios de agitación.', tags: [], fecha: '2025-11', destacado: true, url: null, validado: true },
+  { id: 2, titulo: 'Comunicación efectiva con el familiar cuidador', categoria: 'Artículo', resumen: 'Guía para establecer comunicación clara y empática con los familiares.', tags: [], fecha: '2025-10', destacado: true, url: null, validado: true },
+  { id: 3, titulo: 'Ejercicios cognitivos adaptados por nivel', categoria: 'Guía', resumen: 'Banco de actividades cognitivas clasificadas por nivel de soporte.', tags: [], fecha: '2025-09', destacado: false, url: null, validado: false },
 ]
 
-const CATEGORIAS = ['Todas', ...new Set(ARTICULOS.map(a => a.categoria))]
-const CAT_COLORS = { Demencia: 'ch-pp', Familia: 'ch-teal', Cognitiva: 'ch-blu', Evaluación: 'ch-am', Herramientas: 'ch-gray', Neurología: 'ch-rd' }
+const TIPO_LABEL = {
+  pdf:       'PDF',
+  articulo:  'Artículo',
+  guia:      'Guía',
+  protocolo: 'Protocolo',
+}
 
+const TIPO_OPCIONES = [
+  { value: 'guia',      label: 'Guía clínica' },
+  { value: 'articulo',  label: 'Artículo' },
+  { value: 'protocolo', label: 'Protocolo' },
+  { value: 'pdf',       label: 'PDF / Documento' },
+]
+
+const CAT_COLORS = {
+  PDF:       'ch-rd',
+  Artículo:  'ch-blu',
+  Guía:      'ch-teal',
+  Protocolo: 'ch-pp',
+}
+
+function normalizeRecurso(r) {
+  const categoria = TIPO_LABEL[r.tipo] ?? r.tipo ?? 'Recurso'
+  const fecha = r.subido_en
+    ? new Date(r.subido_en).toLocaleDateString('es-AR', { year: 'numeric', month: '2-digit' }).split('/').reverse().join('-')
+    : '—'
+  return {
+    id:        r.id,
+    titulo:    r.titulo,
+    categoria,
+    resumen:   r.descripcion || '',
+    tags:      [],
+    fecha,
+    destacado: r.validado ?? false,
+    validado:  r.validado ?? false,
+    url:       r.url_storage ?? null,
+  }
+}
+
+// ─── Íconos ───────────────────────────────────────────────────────────────
 const IcoSearch = () => (
   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
     <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/>
@@ -28,25 +63,229 @@ const IcoStar = () => (
   </svg>
 )
 
-export default function TerIntConocimiento() {
-  const [busqueda, setBusqueda] = useState('')
-  const [cat, setCat]           = useState('Todas')
-  const [expandido, setExpandido] = useState(null)
+// ─── Modal nuevo recurso ──────────────────────────────────────────────────
+function ModalNuevoRecurso({ onClose, onSave }) {
+  const [form, setForm] = useState({
+    titulo: '', descripcion: '', tipo: 'guia',
+    url_storage: '', contenido_texto: '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState('')
 
-  const filtrados = ARTICULOS.filter(a => {
+  function set(field, value) {
+    setForm(f => ({ ...f, [field]: value }))
+    setError('')
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!form.titulo.trim()) { setError('El título es obligatorio.'); return }
+    setSaving(true)
+    await onSave({
+      titulo:          form.titulo.trim(),
+      descripcion:     form.descripcion.trim() || null,
+      tipo:            form.tipo,
+      url_storage:     form.url_storage.trim() || null,
+      contenido_texto: form.contenido_texto.trim() || null,
+    })
+    setSaving(false)
+  }
+
+  return (
+    <div className="ov open" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="mo">
+        <div className="mh">
+          <div className="mt">Nuevo recurso</div>
+          <button className="btn btn-g btn-sm" onClick={onClose}>✕</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb">
+            <div className="fg">
+              <label className="fl">Título *</label>
+              <input className="fi" value={form.titulo}
+                onChange={e => set('titulo', e.target.value)}
+                placeholder="Ej: Guía de intervención en crisis conductual" />
+            </div>
+            <div className="fg">
+              <label className="fl">Tipo de material</label>
+              <select className="fs" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
+                {TIPO_OPCIONES.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="fg">
+              <label className="fl">Descripción <span className="tm">(breve resumen)</span></label>
+              <textarea className="fi fta" rows={2} value={form.descripcion}
+                onChange={e => set('descripcion', e.target.value)}
+                placeholder="Breve descripción del contenido y su utilidad clínica…" />
+            </div>
+            <div className="fg">
+              <label className="fl">
+                Contenido del recurso{' '}
+                <span className="tm">(texto para el Asistente IA)</span>
+              </label>
+              <textarea className="fi fta" rows={5} value={form.contenido_texto}
+                onChange={e => set('contenido_texto', e.target.value)}
+                placeholder="Pegá aquí el texto del artículo, guía o protocolo. Este contenido genera el embedding que permite al Asistente IA responder consultas basándose en este material…" />
+              <div className="txs tm" style={{ marginTop: 4 }}>
+                Al validar el recurso, se generará automáticamente el embedding para RAG.
+              </div>
+            </div>
+            <div className="fg">
+              <label className="fl">URL del recurso <span className="tm">(opcional)</span></label>
+              <input className="fi" value={form.url_storage}
+                onChange={e => set('url_storage', e.target.value)}
+                placeholder="https://… o ruta interna al archivo" />
+            </div>
+            <div className="disc disc-tl txs">
+              El material quedará como <strong>pendiente de validación</strong> hasta que un terapeuta interno lo apruebe. Solo los recursos validados alimentan el Asistente IA.
+            </div>
+            {error && <div className="disc disc-rd txs">{error}</div>}
+          </div>
+          <div className="mf">
+            <button type="button" className="btn btn-s" onClick={onClose}>Cancelar</button>
+            <button type="submit" className="btn btn-p" disabled={saving || !form.titulo.trim()}>
+              {saving ? 'Guardando…' : 'Agregar recurso'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────
+export default function TerIntConocimiento() {
+  const { authFetch } = useAuth()
+  const [articulos, setArticulos] = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [busqueda, setBusqueda]   = useState('')
+  const [cat, setCat]             = useState('Todas')
+  const [expandido, setExpandido] = useState(null)
+  const [modal, setModal]         = useState(false)
+  const [toast, setToast]         = useState('')
+  const [validando, setValidando] = useState(null)   // id del recurso que se está validando
+
+  function showToast(msg) {
+    setToast(msg)
+    setTimeout(() => setToast(''), 2800)
+  }
+
+  // ── Carga inicial ────────────────────────────────────────────────────
+  useEffect(() => {
+    async function cargar() {
+      setLoading(true)
+      try {
+        const res = await authFetch('/api/v1/recursos/?solo_validados=false')
+        if (res.ok) {
+          const data = await res.json()
+          setArticulos(Array.isArray(data) ? data.map(normalizeRecurso) : [])
+        } else {
+          setArticulos([])
+        }
+      } catch {
+        setArticulos(MOCK)
+      } finally {
+        setLoading(false)
+      }
+    }
+    cargar()
+  }, [authFetch])
+
+  // ── Crear nuevo recurso ──────────────────────────────────────────────
+  async function handleSave(formData) {
+    try {
+      const res = await authFetch('/api/v1/recursos/', {
+        method: 'POST',
+        body: JSON.stringify(formData),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const nuevo = normalizeRecurso(data)
+        setArticulos(prev => [nuevo, ...prev])
+        setModal(false)
+        showToast('Recurso agregado. Pendiente de validación.')
+      } else {
+        const err = await res.json().catch(() => ({}))
+        showToast(err?.detail ?? 'Error al guardar el recurso.')
+        setModal(false)
+      }
+    } catch {
+      // Fallback local si no hay conexión
+      const local = {
+        id:        Date.now(),
+        titulo:    formData.titulo,
+        categoria: TIPO_LABEL[formData.tipo] ?? 'Recurso',
+        resumen:   formData.descripcion ?? '',
+        tags:      [],
+        fecha:     new Date().toLocaleDateString('es-AR', { year: 'numeric', month: '2-digit' }).split('/').reverse().join('-'),
+        destacado: false,
+        validado:  false,
+        url:       formData.url_storage ?? null,
+      }
+      setArticulos(prev => [local, ...prev])
+      setModal(false)
+      showToast('Guardado localmente (sin conexión).')
+    }
+  }
+
+  // ── Validar recurso ──────────────────────────────────────────────────
+  async function handleValidar(id, e) {
+    e.stopPropagation()
+    setValidando(id)
+    try {
+      const res = await authFetch(`/api/v1/recursos/${id}/validar`, { method: 'POST' })
+      if (res.ok) {
+        setArticulos(prev => prev.map(a =>
+          a.id === id ? { ...a, validado: true, destacado: true } : a
+        ))
+        showToast('Recurso validado. Ahora está disponible para el Asistente IA.')
+      } else {
+        const err = await res.json().catch(() => ({}))
+        showToast(err?.detail ?? 'Error al validar el recurso.')
+      }
+    } catch {
+      showToast('Error de conexión al intentar validar.')
+    } finally {
+      setValidando(null)
+    }
+  }
+
+  const categorias = ['Todas', ...new Set(articulos.map(a => a.categoria))]
+  const pendientes = articulos.filter(a => !a.validado).length
+
+  const filtrados = articulos.filter(a => {
     const q = busqueda.toLowerCase()
-    const matchQ = !q || a.titulo.toLowerCase().includes(q) || a.resumen.toLowerCase().includes(q) || a.tags.some(t => t.includes(q))
+    const matchQ = !q || a.titulo.toLowerCase().includes(q) || a.resumen.toLowerCase().includes(q)
     const matchC = cat === 'Todas' || a.categoria === cat
     return matchQ && matchC
   })
 
   return (
     <div>
+      <div className={`toast ${toast ? 'visible' : ''}`}>{toast}</div>
+
+      {/* Header */}
       <div className="flex ic jb mb20">
         <div>
           <div style={{ fontSize: 20, fontWeight: 700 }}>Base de conocimiento</div>
-          <div className="ts tm" style={{ marginTop: 3 }}>{ARTICULOS.length} recursos disponibles</div>
+          <div className="ts tm" style={{ marginTop: 3 }}>
+            {loading ? 'Cargando…' : (
+              <>
+                {articulos.length} recursos
+                {pendientes > 0 && (
+                  <span style={{ color: 'var(--amber)', marginLeft: 6 }}>
+                    · {pendientes} pendiente{pendientes > 1 ? 's' : ''} de validación
+                  </span>
+                )}
+              </>
+            )}
+          </div>
         </div>
+        <button className="btn btn-p btn-sm" onClick={() => setModal(true)}>
+          + Nuevo recurso
+        </button>
       </div>
 
       {/* Buscador */}
@@ -55,86 +294,128 @@ export default function TerIntConocimiento() {
           <IcoSearch />
         </span>
         <input className="fi" value={busqueda} onChange={e => setBusqueda(e.target.value)}
-          placeholder="Buscar por título, tema o etiqueta…" style={{ paddingLeft: 34 }} />
+          placeholder="Buscar por título o descripción…" style={{ paddingLeft: 34 }} />
       </div>
 
-      {/* Categorías */}
-      <div className="flex ic g8 mb20" style={{ flexWrap: 'wrap' }}>
-        {CATEGORIAS.map(c => (
-          <button key={c} className={`btn btn-sm ${cat === c ? 'btn-p' : 'btn-s'}`} onClick={() => setCat(c)}>
-            {c}
-          </button>
-        ))}
-      </div>
-
-      {/* Destacados */}
-      {cat === 'Todas' && !busqueda && (
-        <div className="mb20">
-          <div className="ts f6 mb12 flex ic g6" style={{ color: 'var(--amber)' }}>
-            <IcoStar /> Recursos destacados
-          </div>
-          <div className="g2">
-            {ARTICULOS.filter(a => a.destacado).map(a => (
-              <div key={a.id} className="card" style={{ background: 'var(--amber2)', border: '1px solid #f0cb8a', cursor: 'pointer' }}
-                onClick={() => setExpandido(expandido === a.id ? null : a.id)}>
-                <div className="flex ic jb mb8">
-                  <span className={`chip ${CAT_COLORS[a.categoria] ?? 'ch-gray'}`}>{a.categoria}</span>
-                  <span className="txs tm">{a.fecha}</span>
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>{a.titulo}</div>
-                {expandido === a.id && (
-                  <div className="ts" style={{ color: 'var(--text2)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-                    {a.resumen}
-                  </div>
-                )}
-              </div>
+      {loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>Cargando…</div>
+      ) : (
+        <>
+          {/* Filtros por tipo */}
+          <div className="flex ic g8 mb20" style={{ flexWrap: 'wrap' }}>
+            {categorias.map(c => (
+              <button key={c} className={`btn btn-sm ${cat === c ? 'btn-p' : 'btn-s'}`} onClick={() => setCat(c)}>
+                {c}
+              </button>
             ))}
           </div>
-        </div>
-      )}
 
-      {/* Lista completa */}
-      {filtrados.length === 0 ? (
-        <div style={{ padding: 48, textAlign: 'center', color: 'var(--text3)' }}>
-          <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
-          <div style={{ fontWeight: 600, color: 'var(--text)' }}>Sin resultados</div>
-          <div className="ts tm" style={{ marginTop: 4 }}>Probá con otros términos de búsqueda.</div>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {filtrados.map(a => (
-            <div key={a.id} className="card" style={{ cursor: 'pointer', transition: 'box-shadow 0.15s' }}
-              onClick={() => setExpandido(expandido === a.id ? null : a.id)}
-              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'}
-              onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
-              <div className="flex ic jb">
-                <div className="flex ic g10" style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--purple2)',
-                    color: 'var(--purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <IcoBook />
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{a.titulo}</div>
-                    <div className="flex ic g6" style={{ marginTop: 4, flexWrap: 'wrap' }}>
+          {/* Destacados (validados) */}
+          {cat === 'Todas' && !busqueda && articulos.some(a => a.destacado) && (
+            <div className="mb20">
+              <div className="ts f6 mb12 flex ic g6" style={{ color: 'var(--amber)' }}>
+                <IcoStar /> Recursos validados
+              </div>
+              <div className="g2">
+                {articulos.filter(a => a.destacado).map(a => (
+                  <div key={a.id} className="card"
+                    style={{ background: 'var(--amber2)', border: '1px solid #f0cb8a', cursor: 'pointer' }}
+                    onClick={() => setExpandido(expandido === a.id ? null : a.id)}>
+                    <div className="flex ic jb mb8">
                       <span className={`chip ${CAT_COLORS[a.categoria] ?? 'ch-gray'}`}>{a.categoria}</span>
-                      {a.tags.map(t => <span key={t} className="chip ch-gray" style={{ fontSize: 10 }}>{t}</span>)}
+                      <span className="txs tm">{a.fecha}</span>
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>{a.titulo}</div>
+                    {expandido === a.id && (
+                      <div className="ts" style={{ color: 'var(--text2)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+                        {a.resumen || <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>Sin descripción.</span>}
+                        {a.url && (
+                          <a href={a.url} target="_blank" rel="noopener noreferrer"
+                            className="btn btn-s btn-sm" style={{ display: 'inline-block', marginTop: 10 }}
+                            onClick={e => e.stopPropagation()}>
+                            Ver recurso →
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Lista completa */}
+          {filtrados.length === 0 ? (
+            <div style={{ padding: 48, textAlign: 'center', color: 'var(--text3)' }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
+              <div style={{ fontWeight: 600, color: 'var(--text)' }}>Sin resultados</div>
+              <div className="ts tm" style={{ marginTop: 4 }}>Probá con otros términos de búsqueda.</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {filtrados.map(a => (
+                <div key={a.id} className="card" style={{ cursor: 'pointer', transition: 'box-shadow 0.15s' }}
+                  onClick={() => setExpandido(expandido === a.id ? null : a.id)}
+                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
+
+                  <div className="flex ic jb">
+                    <div className="flex ic g10" style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 8,
+                        background: a.validado ? 'var(--purple2)' : 'var(--bg2)',
+                        color: a.validado ? 'var(--purple)' : 'var(--text3)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <IcoBook />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{a.titulo}</div>
+                        <div className="flex ic g6" style={{ marginTop: 4, flexWrap: 'wrap' }}>
+                          <span className={`chip ${CAT_COLORS[a.categoria] ?? 'ch-gray'}`}>{a.categoria}</span>
+                          {a.validado
+                            ? <span className="chip ch-teal">Validado</span>
+                            : <span className="chip ch-am">Pendiente validación</span>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex ic g8" style={{ flexShrink: 0, marginLeft: 8 }}>
+                      {!a.validado && (
+                        <button
+                          className="btn btn-s btn-sm"
+                          disabled={validando === a.id}
+                          onClick={e => handleValidar(a.id, e)}
+                          title="Marcar como validado para que el Asistente IA lo use">
+                          {validando === a.id ? '…' : 'Validar'}
+                        </button>
+                      )}
+                      <span style={{ color: 'var(--text3)', fontSize: 18 }}>
+                        {expandido === a.id ? '−' : '+'}
+                      </span>
                     </div>
                   </div>
+
+                  {expandido === a.id && (
+                    <div className="ts" style={{ color: 'var(--text2)', lineHeight: 1.55, marginTop: 12,
+                      paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                      {a.resumen || <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>Sin descripción.</span>}
+                      {a.url && (
+                        <a href={a.url} target="_blank" rel="noopener noreferrer"
+                          className="btn btn-s btn-sm" style={{ display: 'inline-block', marginTop: 10 }}
+                          onClick={e => e.stopPropagation()}>
+                          Ver recurso →
+                        </a>
+                      )}
+                      <div className="txs tm" style={{ marginTop: 8 }}>Subido: {a.fecha}</div>
+                    </div>
+                  )}
                 </div>
-                <span style={{ color: 'var(--text3)', fontSize: 18, flexShrink: 0, marginLeft: 8 }}>
-                  {expandido === a.id ? '−' : '+'}
-                </span>
-              </div>
-              {expandido === a.id && (
-                <div className="ts" style={{ color: 'var(--text2)', lineHeight: 1.55, marginTop: 12,
-                  paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-                  {a.resumen}
-                </div>
-              )}
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
+
+      {modal && <ModalNuevoRecurso onClose={() => setModal(false)} onSave={handleSave} />}
     </div>
   )
 }

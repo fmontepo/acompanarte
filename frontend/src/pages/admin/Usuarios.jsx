@@ -179,6 +179,16 @@ export default function AdminUsuarios() {
   const [modal, setModal]         = useState(null)
   const [toast, setToast]         = useState('')
 
+  // Normaliza el objeto usuario del backend al shape esperado por la tabla
+  function normalizeUser(u) {
+    return {
+      ...u,
+      rol_key:      u.rol_key ?? u.rol ?? 'familia',   // backend devuelve "rol", frontend usa "rol_key"
+      fecha_alta:   u.fecha_alta   ?? u.creado_en,     // backend devuelve "creado_en"
+      ultimo_acceso: u.ultimo_acceso ?? u.ultimo_login, // backend devuelve "ultimo_login"
+    }
+  }
+
   useEffect(() => {
     async function cargar() {
       setLoading(true)
@@ -186,12 +196,13 @@ export default function AdminUsuarios() {
         const res = await authFetch('/api/v1/usuarios/')
         if (res.ok) {
           const data = await res.json()
-          setUsuarios(Array.isArray(data) && data.length > 0 ? data : MOCK_USUARIOS)
+          const norm = Array.isArray(data) ? data.map(normalizeUser) : []
+          setUsuarios(norm)
         } else {
-          setUsuarios(MOCK_USUARIOS)
+          setUsuarios([])
         }
       } catch {
-        setUsuarios(MOCK_USUARIOS)
+        setUsuarios(MOCK_USUARIOS)  // error de red → mock
       } finally {
         setLoading(false)
       }
@@ -204,21 +215,81 @@ export default function AdminUsuarios() {
     setTimeout(() => setToast(''), 2800)
   }
 
-  function handleSave(form) {
+  async function handleSave(form) {
     if (modal.modo === 'crear') {
-      setUsuarios(u => [{ id: Date.now(), ...form, ultimo_acceso: null, fecha_alta: new Date().toISOString().slice(0, 10) }, ...u])
-      showToast('Usuario creado correctamente.')
+      try {
+        const res = await authFetch('/api/v1/usuarios/', {
+          method: 'POST',
+          body: JSON.stringify({
+            nombre:   form.nombre,
+            apellido: form.apellido,
+            email:    form.email,
+            rol:      form.rol_key,   // backend espera 'rol', no 'rol_key'
+            password: form.password,
+          }),
+        })
+        if (res.ok) {
+          const nuevo = normalizeUser(await res.json())
+          setUsuarios(u => [nuevo, ...u])
+          showToast('Usuario creado correctamente.')
+        } else {
+          const err = await res.json().catch(() => ({}))
+          showToast(err.detail ?? 'Error al crear el usuario.')
+          return
+        }
+      } catch {
+        showToast('Error de conexión.')
+        return
+      }
     } else {
-      setUsuarios(u => u.map(x => x.id === modal.usuario.id ? { ...x, ...form } : x))
-      showToast('Cambios guardados correctamente.')
+      try {
+        const res = await authFetch(`/api/v1/usuarios/${modal.usuario.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            nombre:   form.nombre,
+            apellido: form.apellido,
+            rol:      form.rol_key,
+            activo:   form.activo,
+          }),
+        })
+        if (res.ok) {
+          const actualizado = normalizeUser(await res.json())
+          setUsuarios(u => u.map(x => x.id === modal.usuario.id ? actualizado : x))
+          showToast('Cambios guardados correctamente.')
+        } else {
+          const err = await res.json().catch(() => ({}))
+          showToast(err.detail ?? 'Error al guardar los cambios.')
+          return
+        }
+      } catch {
+        showToast('Error de conexión.')
+        return
+      }
     }
     setModal(null)
   }
 
-  function toggleActivo(id) {
+  async function toggleActivo(id) {
     const u = usuarios.find(x => x.id === id)
+    if (!u) return
+    // Actualización optimista
     setUsuarios(prev => prev.map(x => x.id === id ? { ...x, activo: !x.activo } : x))
-    showToast(u?.activo ? 'Usuario desactivado.' : 'Usuario activado.')
+    try {
+      const res = await authFetch(`/api/v1/usuarios/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ activo: !u.activo }),
+      })
+      if (res.ok) {
+        showToast(u.activo ? 'Usuario desactivado.' : 'Usuario activado.')
+      } else {
+        // Revertir si falla
+        setUsuarios(prev => prev.map(x => x.id === id ? { ...x, activo: u.activo } : x))
+        showToast('Error al cambiar el estado del usuario.')
+      }
+    } catch {
+      setUsuarios(prev => prev.map(x => x.id === id ? { ...x, activo: u.activo } : x))
+      showToast('Error de conexión.')
+    }
   }
 
   function handleSort(col) {

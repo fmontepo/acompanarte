@@ -157,43 +157,54 @@ export default function AdminDashboard() {
     async function cargarDatos() {
       setLoading(true)
       try {
-        // Intentar cargar datos reales del backend
-        const [resUsuarios, resPacientes, resTerapeutas, resAuditoria] = await Promise.allSettled([
-          authFetch('/api/v1/usuarios/'),
-          authFetch('/api/v1/pacientes/'),
-          authFetch('/api/v1/terapeutas/'),
+        // Endpoint agregado: devuelve stats + recientes en una sola llamada
+        const [resDash, resAuditoria] = await Promise.allSettled([
+          authFetch('/api/v1/admin/dashboard'),
           authFetch('/api/v1/auditoria/?limit=8'),
         ])
 
-        // Si alguna falla, usamos mock data
-        const statsData = { ...MOCK_STATS }
-
-        if (resUsuarios.status === 'fulfilled' && resUsuarios.value.ok) {
-          const data = await resUsuarios.value.json()
-          statsData.usuarios.total = Array.isArray(data) ? data.length : data.total ?? MOCK_STATS.usuarios.total
+        // Dashboard stats
+        if (resDash.status === 'fulfilled' && resDash.value.ok) {
+          const data = await resDash.value.json()
+          const s = data.stats ?? {}
+          setStats({
+            usuarios:        { total: s.usuarios?.total ?? 0, activos: s.usuarios?.total ?? 0, nuevos_mes: s.usuarios?.nuevos_mes ?? 0 },
+            pacientes:       { total: s.pacientes?.total ?? 0, activos: s.pacientes?.activos ?? 0, alta_este_mes: s.pacientes?.alta_este_mes ?? 0 },
+            terapeutas:      { total: s.terapeutas?.total ?? 0, internos: s.terapeutas?.internos ?? 0, externos: s.terapeutas?.externos ?? 0 },
+            actividades_hoy: s.actividades_hoy ?? 0,
+          })
+          setRecientes(Array.isArray(data.recientes) ? data.recientes.map(u => ({
+            id:      u.id,
+            nombre:  u.nombre,
+            email:   u.email,
+            rol:     u.rol_label || u.rol || '—',
+            av:      (u.nombre || '?').slice(0, 2).toUpperCase(),
+            avClass: 'av-tl',
+            fecha:   u.fecha ? new Date(u.fecha).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—',
+          })) : [])
+        } else {
+          setStats({ usuarios: {total:0,activos:0,nuevos_mes:0}, pacientes: {total:0,activos:0,alta_este_mes:0}, terapeutas: {total:0,internos:0,externos:0}, actividades_hoy: 0 })
+          setRecientes([])
         }
-        if (resPacientes.status === 'fulfilled' && resPacientes.value.ok) {
-          const data = await resPacientes.value.json()
-          statsData.pacientes.total = Array.isArray(data) ? data.length : data.total ?? MOCK_STATS.pacientes.total
-        }
-        if (resTerapeutas.status === 'fulfilled' && resTerapeutas.value.ok) {
-          const data = await resTerapeutas.value.json()
-          statsData.terapeutas.total = Array.isArray(data) ? data.length : data.total ?? MOCK_STATS.terapeutas.total
-        }
 
-        setStats(statsData)
-
+        // Auditoría reciente
         if (resAuditoria.status === 'fulfilled' && resAuditoria.value.ok) {
           const data = await resAuditoria.value.json()
-          setAuditoria(Array.isArray(data) && data.length > 0 ? data : MOCK_AUDITORIA)
+          setAuditoria(Array.isArray(data) ? data.map(e => ({
+            id:     e.id,
+            tipo:   e.accion || e.tipo || 'create',
+            usuario: e.usuario || 'Sistema',
+            rol:    e.rol || 'sistema',
+            accion: e.desc || e.accion || '',
+            hora:   e.timestamp ? _hace(e.timestamp) : '—',
+            estado: e.resultado === 'exito' ? 'ok' : 'alerta',
+          })) : [])
         } else {
-          setAuditoria(MOCK_AUDITORIA)
+          setAuditoria([])
         }
 
-        setRecientes(MOCK_USUARIOS_RECIENTES)
-
       } catch {
-        // Fallback completo a mock data
+        // error de red → mock para no dejar la UI completamente vacía
         setStats(MOCK_STATS)
         setAuditoria(MOCK_AUDITORIA)
         setRecientes(MOCK_USUARIOS_RECIENTES)
@@ -204,6 +215,16 @@ export default function AdminDashboard() {
 
     cargarDatos()
   }, [authFetch])
+
+  function _hace(iso) {
+    const diff  = Date.now() - new Date(iso).getTime()
+    const mins  = Math.floor(diff / 60000)
+    const hours = Math.floor(mins / 60)
+    const days  = Math.floor(hours / 24)
+    if (mins < 60)  return `hace ${mins} min`
+    if (hours < 24) return `hace ${hours} h`
+    return `hace ${days} día${days > 1 ? 's' : ''}`
+  }
 
   // ── Skeleton loader ────────────────────────────────────────────────
   if (loading) {
@@ -308,9 +329,10 @@ export default function AdminDashboard() {
             </button>
           </div>
           <div style={{ padding: '0 20px' }}>
-            {auditoria.map(item => (
-              <AuditRow key={item.id} item={item} />
-            ))}
+            {auditoria.length === 0
+              ? <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>Sin actividad registrada todavía</div>
+              : auditoria.map(item => <AuditRow key={item.id} item={item} />)
+            }
           </div>
         </div>
 
@@ -320,25 +342,25 @@ export default function AdminDashboard() {
           {/* Distribución de roles */}
           <div className="card">
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Distribución de usuarios</div>
-            {[
-              { rol: 'Familiares',           n: 12, pct: 50, color: 'var(--teal)',   bg: 'pf' },
-              { rol: 'Terapeutas Internos',  n: 5,  pct: 21, color: 'var(--purple)', bg: 'pf pf-p' },
-              { rol: 'Terapeutas Externos',  n: 3,  pct: 13, color: 'var(--amber)',  bg: 'pf pf-a' },
-              { rol: 'Administradores',      n: 4,  pct: 16, color: 'var(--blue)',   bg: 'pf' },
-            ].map(row => (
-              <div key={row.rol} style={{ marginBottom: 12 }}>
-                <div className="flex ic jb" style={{ marginBottom: 5 }}>
-                  <span className="ts">{row.rol}</span>
-                  <span className="ts f5" style={{ color: row.color }}>{row.n}</span>
+            {(() => {
+              const total = stats.usuarios.total || 1
+              const rows = [
+                { rol: 'Terapeutas Internos', n: stats.terapeutas.internos, color: 'var(--purple)' },
+                { rol: 'Terapeutas Externos', n: stats.terapeutas.externos, color: 'var(--amber)' },
+                { rol: 'Familiares + Otros',  n: Math.max(0, stats.usuarios.total - stats.terapeutas.total), color: 'var(--teal)' },
+              ]
+              return rows.map(row => (
+                <div key={row.rol} style={{ marginBottom: 12 }}>
+                  <div className="flex ic jb" style={{ marginBottom: 5 }}>
+                    <span className="ts">{row.rol}</span>
+                    <span className="ts f5" style={{ color: row.color }}>{row.n}</span>
+                  </div>
+                  <div className="pbar">
+                    <div className="pf" style={{ width: `${Math.round((row.n / total) * 100)}%`, background: row.color }} />
+                  </div>
                 </div>
-                <div className="pbar">
-                  <div className={row.bg} style={{
-                    width: `${row.pct}%`,
-                    background: row.color,
-                  }} />
-                </div>
-              </div>
-            ))}
+              ))
+            })()}
           </div>
 
           {/* Nuevos usuarios */}
@@ -349,20 +371,23 @@ export default function AdminDashboard() {
                 Ver todos
               </button>
             </div>
-            {recientes.map(u => (
-              <div key={u.id} className="flex ic g10" style={{ marginBottom: 12 }}>
-                <div className={`av ${u.avClass}`} style={{ width: 32, height: 32, fontSize: 11 }}>
-                  {u.av}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="ts f5" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {u.nombre}
+            {recientes.length === 0
+              ? <div className="txs tm" style={{ textAlign: 'center', padding: '12px 0' }}>Sin registros recientes</div>
+              : recientes.map(u => (
+                <div key={u.id} className="flex ic g10" style={{ marginBottom: 12 }}>
+                  <div className={`av ${u.avClass}`} style={{ width: 32, height: 32, fontSize: 11 }}>
+                    {u.av}
                   </div>
-                  <div className="txs tm">{u.rol}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="ts f5" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {u.nombre}
+                    </div>
+                    <div className="txs tm">{u.rol}</div>
+                  </div>
+                  <div className="txs tm" style={{ flexShrink: 0 }}>{u.fecha}</div>
                 </div>
-                <div className="txs tm" style={{ flexShrink: 0 }}>{u.fecha}</div>
-              </div>
-            ))}
+              ))
+            }
           </div>
 
           {/* Acciones rápidas */}

@@ -23,6 +23,33 @@ export default function TerIntAlertas() {
   const [filtro, setFiltro]     = useState('activas')
   const [toast, setToast]       = useState('')
 
+  // Backend: {id, sesion_id, tipo, severidad, descripcion, resuelta, creada_en}
+  // Frontend: {id, paciente, av, avClass, tipo, titulo, texto, fecha, resuelta}
+  function normalizeAlerta(a) {
+    const tipoMap = { urgente: 'incidente', aviso: 'consentimiento' }
+    return {
+      id:       a.id,
+      paciente: a.paciente || 'Paciente',
+      av:       a.av || 'PT',
+      avClass:  a.avClass || 'av-tl',
+      tipo:     a.tipo && TIPO_META[a.tipo] ? a.tipo : (tipoMap[a.tipo] || 'incidente'),
+      titulo:   a.titulo || a.tipo || 'Alerta',
+      texto:    a.descripcion || a.texto || '',
+      fecha:    a.creada_en ? _hace(new Date(a.creada_en)) : '—',
+      resuelta: a.resuelta || false,
+    }
+  }
+
+  function _hace(d) {
+    const diff  = Date.now() - d.getTime()
+    const mins  = Math.floor(diff / 60000)
+    const hours = Math.floor(mins / 60)
+    const days  = Math.floor(hours / 24)
+    if (mins < 60)  return `hace ${mins} min`
+    if (hours < 24) return `hace ${hours} h`
+    return `hace ${days} día${days > 1 ? 's' : ''}`
+  }
+
   useEffect(() => {
     async function cargar() {
       setLoading(true)
@@ -30,17 +57,30 @@ export default function TerIntAlertas() {
         const res = await authFetch('/api/v1/alertas/')
         if (res.ok) {
           const data = await res.json()
-          setAlertas(Array.isArray(data) && data.length > 0 ? data : MOCK)
-        } else { setAlertas(MOCK) }
-      } catch { setAlertas(MOCK) }
+          const norm = Array.isArray(data) ? data.map(normalizeAlerta) : []
+          setAlertas(norm)
+        } else { setAlertas([]) }
+      } catch { setAlertas(MOCK) }  // error de red → mock
       finally { setLoading(false) }
     }
     cargar()
   }, [authFetch])
 
-  function resolver(id) {
+  async function resolver(id) {
+    // Actualización optimista
     setAlertas(prev => prev.map(a => a.id === id ? { ...a, resuelta: true } : a))
-    setToast('Alerta marcada como resuelta.')
+    try {
+      const res = await authFetch(`/api/v1/alertas/${id}/resolver`, { method: 'POST' })
+      if (res.ok) {
+        setToast('Alerta marcada como resuelta.')
+      } else {
+        // Revertir si falla
+        setAlertas(prev => prev.map(a => a.id === id ? { ...a, resuelta: false } : a))
+        setToast('Error al resolver la alerta.')
+      }
+    } catch {
+      setToast('Resuelta localmente (sin conexión).')
+    }
     setTimeout(() => setToast(''), 2500)
   }
 

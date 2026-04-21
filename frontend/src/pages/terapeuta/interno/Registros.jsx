@@ -32,7 +32,7 @@ function formatFecha(iso) {
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + hora
 }
 
-function ModalNuevoRegistro({ onClose, onSave }) {
+function ModalNuevoRegistro({ onClose, onSave, pacientes }) {
   const [form, setForm] = useState({ paciente_id: '', tipo: 'Seguimiento', nota: '', estado: 'completado' })
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
@@ -60,7 +60,7 @@ function ModalNuevoRegistro({ onClose, onSave }) {
               <select className="fs" value={form.paciente_id}
                 onChange={e => setForm(f => ({ ...f, paciente_id: e.target.value }))}>
                 <option value="">Seleccioná un paciente…</option>
-                {PACIENTES.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                {pacientes.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
               </select>
             </div>
             <div className="fr2">
@@ -103,42 +103,109 @@ function ModalNuevoRegistro({ onClose, onSave }) {
 
 export default function TerIntRegistros() {
   const { authFetch } = useAuth()
-  const [registros, setRegistros] = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [modal, setModal]         = useState(false)
-  const [filtro, setFiltro]       = useState('todos')
-  const [toast, setToast]         = useState('')
+  const [registros, setRegistros]   = useState([])
+  const [pacientes, setPacientes]   = useState(PACIENTES)   // dropdown del modal
+  const [loading, setLoading]       = useState(true)
+  const [modal, setModal]           = useState(false)
+  const [filtro, setFiltro]         = useState('todos')
+  const [toast, setToast]           = useState('')
+
+  // Normaliza el schema del backend al shape esperado por la tabla
+  function normalizeRegistro(r, pacsMap) {
+    const pac = pacsMap?.[r.paciente_id]
+    return {
+      id:       r.id,
+      paciente: pac?.nombre || r.paciente || `Paciente`,
+      av:       pac?.av || 'PT',
+      avClass:  pac?.avClass || 'av-tl',
+      tipo:     r.tipo ? (r.tipo.charAt(0).toUpperCase() + r.tipo.slice(1)) : 'Seguimiento',
+      fecha:    r.fecha_registro || r.creado_en,
+      nota:     r.contenido_enc || r.nota || '',
+      estado:   r.estado || 'completado',
+    }
+  }
 
   useEffect(() => {
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/registros/')
-        if (res.ok) {
-          const data = await res.json()
-          setRegistros(Array.isArray(data) && data.length > 0 ? data : MOCK)
-        } else { setRegistros(MOCK) }
-      } catch { setRegistros(MOCK) }
+        // Cargar pacientes y registros en paralelo
+        const [resPacs, resRegs] = await Promise.allSettled([
+          authFetch('/api/v1/pacientes/'),
+          authFetch('/api/v1/registros/'),
+        ])
+        // Mapa id→paciente para enriquecer registros
+        let pacsMap = {}
+        if (resPacs.status === 'fulfilled' && resPacs.value.ok) {
+          const pacs = await resPacs.value.json()
+          if (Array.isArray(pacs) && pacs.length > 0) {
+            setPacientes(pacs.map(p => ({ id: p.id, nombre: p.nombre_enc || 'Paciente', av: (p.nombre_enc||'P').slice(0,2).toUpperCase(), avClass: 'av-tl' })))
+            pacs.forEach(p => { pacsMap[p.id] = p })
+          }
+        }
+        if (resRegs.status === 'fulfilled' && resRegs.value.ok) {
+          const data = await resRegs.value.json()
+          const norm = Array.isArray(data) ? data.map(r => normalizeRegistro(r, pacsMap)) : []
+          setRegistros(norm)
+        } else { setRegistros([]) }
+      } catch { setRegistros(MOCK) }  // error de red → mock
       finally { setLoading(false) }
     }
     cargar()
   }, [authFetch])
 
-  function handleSave(form) {
-    const pac = PACIENTES.find(p => String(p.id) === String(form.paciente_id))
-    const nuevo = {
-      id: Date.now(),
-      paciente: pac?.nombre ?? 'Paciente',
-      av: pac?.av ?? '?',
-      avClass: pac?.avClass ?? 'av-gr',
-      tipo: form.tipo,
-      fecha: new Date().toISOString(),
-      nota: form.nota,
-      estado: form.estado,
+  // Mapeo de tipos del frontend (español capitalizado) a claves del backend
+  const TIPO_MAP = {
+    'Seguimiento':        'evolucion',
+    'Evaluación':         'observacion',
+    'Incidente':          'incidente',
+    'Sesión terapéutica': 'evolucion',
+    'Observación':        'observacion',
+  }
+
+  async function handleSave(form) {
+    const pac = pacientes.find(p => String(p.id) === String(form.paciente_id))
+
+    try {
+      const res = await authFetch('/api/v1/registros/', {
+        method: 'POST',
+        body: JSON.stringify({
+          paciente_id:     form.paciente_id,
+          contenido:       form.nota,
+          tipo:            TIPO_MAP[form.tipo] ?? 'evolucion',
+          visibilidad:     'equipo',
+          fecha_registro:  new Date().toISOString().slice(0, 10),
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const nuevo = {
+          id:       data.id,
+          paciente: pac?.nombre ?? 'Paciente',
+          av:       pac?.av ?? '?',
+          avClass:  pac?.avClass ?? 'av-gr',
+          tipo:     form.tipo,
+          fecha:    data.creado_en ?? new Date().toISOString(),
+          nota:     data.contenido_enc ?? form.nota,
+          estado:   form.estado,
+        }
+        setRegistros(prev => [nuevo, ...prev])
+        setToast('Registro guardado correctamente.')
+      } else {
+        setToast('Error al guardar el registro.')
+      }
+    } catch {
+      // Fallback local si no hay conexión
+      const nuevo = {
+        id: Date.now(), paciente: pac?.nombre ?? 'Paciente',
+        av: pac?.av ?? '?', avClass: pac?.avClass ?? 'av-gr',
+        tipo: form.tipo, fecha: new Date().toISOString(),
+        nota: form.nota, estado: form.estado,
+      }
+      setRegistros(prev => [nuevo, ...prev])
+      setToast('Guardado localmente (sin conexión).')
     }
-    setRegistros(prev => [nuevo, ...prev])
     setModal(false)
-    setToast('Registro guardado correctamente.')
     setTimeout(() => setToast(''), 2500)
   }
 
@@ -194,7 +261,7 @@ export default function TerIntRegistros() {
         </div>
       )}
 
-      {modal && <ModalNuevoRegistro onClose={() => setModal(false)} onSave={handleSave} />}
+      {modal && <ModalNuevoRegistro pacientes={pacientes} onClose={() => setModal(false)} onSave={handleSave} />}
     </div>
   )
 }

@@ -110,21 +110,29 @@ export default function FamiliarDashboard() {
         const res = await authFetch('/api/v1/familiar/dashboard')
         if (res.ok) {
           const data = await res.json()
-          setPaciente(data.paciente ?? MOCK_PACIENTE)
-          setActividades(data.actividades ?? MOCK_ACTIVIDADES)
-          setSeguimientos(data.seguimientos ?? MOCK_SEGUIMIENTOS)
-          setAlertas(data.alertas ?? MOCK_ALERTAS)
+
+          // Paciente vinculado (null si no hay vínculo activo)
+          setPaciente(data.paciente ?? null)
+
+          // Backend devuelve "actividades_hoy", no "actividades"
+          setActividades(data.actividades_hoy ?? data.actividades ?? [])
+
+          setSeguimientos(data.seguimientos ?? [])
+
+          // Normalizar alertas: tipo "urgente"/"aviso"/"positivo" → "am"/"tl"
+          setAlertas((data.alertas ?? []).map(a => ({
+            id:    a.id,
+            texto: a.texto || a.descripcion || '',
+            tipo:  a.tipo === 'urgente' ? 'am' : 'tl',
+          })))
         } else {
-          setPaciente(MOCK_PACIENTE)
-          setActividades(MOCK_ACTIVIDADES)
-          setSeguimientos(MOCK_SEGUIMIENTOS)
-          setAlertas(MOCK_ALERTAS)
+          // Solo usamos mock si el backend falló (no si devolvió vacío)
+          setPaciente(null); setActividades([]); setSeguimientos([]); setAlertas([])
         }
       } catch {
-        setPaciente(MOCK_PACIENTE)
-        setActividades(MOCK_ACTIVIDADES)
-        setSeguimientos(MOCK_SEGUIMIENTOS)
-        setAlertas(MOCK_ALERTAS)
+        // Error de red: mostrar mock para que la UI no quede en blanco
+        setPaciente(MOCK_PACIENTE); setActividades(MOCK_ACTIVIDADES)
+        setSeguimientos(MOCK_SEGUIMIENTOS); setAlertas(MOCK_ALERTAS)
       } finally {
         setLoading(false)
       }
@@ -147,10 +155,26 @@ export default function FamiliarDashboard() {
     )
   }
 
-  const nombre = [user?.nombre, user?.apellido].filter(Boolean).join(' ') || 'familiar'
   const hora   = new Date().getHours()
   const saludo = hora < 13 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches'
   const actCompletas = actividades.filter(a => a.completada).length
+
+  // Sin paciente vinculado aún
+  if (!paciente) {
+    return (
+      <div>
+        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{saludo}, {user?.nombre ?? 'familiar'} 👋</div>
+        <div className="ts tm" style={{ marginBottom: 24 }}>
+          {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </div>
+        <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>👤</div>
+          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>Sin paciente vinculado</div>
+          <div className="ts tm">Tu cuenta todavía no tiene un ser querido asociado. El equipo terapéutico configurará el vínculo.</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -188,13 +212,13 @@ export default function FamiliarDashboard() {
         <div className="card">
           <div className="flex ic g10 mb16">
             <div className="av av-tl" style={{ width: 48, height: 48, fontSize: 18 }}>
-              {paciente.nombre[0]}{paciente.apellido[0]}
+              {(paciente.nombre?.[0] ?? '?')}{(paciente.apellido?.[0] ?? '')}
             </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 700 }}>
                 {paciente.nombre} {paciente.apellido}
               </div>
-              <div className="ts tm">{paciente.edad} años · {paciente.diagnostico}</div>
+              <div className="ts tm">{paciente.edad != null ? `${paciente.edad} años · ` : ''}{paciente.diagnostico}</div>
             </div>
           </div>
 

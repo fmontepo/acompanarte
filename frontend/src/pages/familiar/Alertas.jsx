@@ -34,9 +34,9 @@ export default function FamiliarAlertas() {
         const res = await authFetch('/api/v1/familiar/alertas')
         if (res.ok) {
           const data = await res.json()
-          setAlertas(Array.isArray(data) && data.length > 0 ? data : MOCK)
-        } else { setAlertas(MOCK) }
-      } catch { setAlertas(MOCK) }
+          setAlertas(Array.isArray(data) ? data : [])
+        } else { setAlertas([]) }
+      } catch { setAlertas(MOCK) }  // error de red → mock
       finally { setLoading(false) }
     }
     cargar()

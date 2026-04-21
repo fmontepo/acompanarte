@@ -27,20 +27,28 @@ const TIPO_META = {
 
 export default function FamiliarSeguimientos() {
   const { authFetch } = useAuth()
-  const [registros, setRegistros] = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [filtro, setFiltro]       = useState('todos')
+  const [registros, setRegistros]         = useState([])
+  const [pacienteNombre, setPacienteNombre] = useState('')
+  const [loading, setLoading]             = useState(true)
+  const [filtro, setFiltro]               = useState('todos')
 
   useEffect(() => {
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/familiar/seguimientos')
-        if (res.ok) {
-          const data = await res.json()
-          setRegistros(Array.isArray(data) && data.length > 0 ? data : MOCK)
-        } else { setRegistros(MOCK) }
-      } catch { setRegistros(MOCK) }
+        const [resDash, resSeg] = await Promise.allSettled([
+          authFetch('/api/v1/familiar/dashboard'),
+          authFetch('/api/v1/familiar/seguimientos'),
+        ])
+        if (resDash.status === 'fulfilled' && resDash.value.ok) {
+          const dash = await resDash.value.json()
+          setPacienteNombre(dash?.paciente?.nombre || '')
+        }
+        if (resSeg.status === 'fulfilled' && resSeg.value.ok) {
+          const data = await resSeg.value.json()
+          setRegistros(Array.isArray(data) ? data : [])
+        } else { setRegistros([]) }
+      } catch { setRegistros(MOCK) }  // error de red → mock
       finally { setLoading(false) }
     }
     cargar()
@@ -53,7 +61,9 @@ export default function FamiliarSeguimientos() {
       <div className="flex ic jb mb20">
         <div>
           <div style={{ fontSize: 20, fontWeight: 700 }}>Seguimientos</div>
-          <div className="ts tm" style={{ marginTop: 3 }}>Notas del equipo terapéutico sobre Roberto</div>
+          <div className="ts tm" style={{ marginTop: 3 }}>
+            {pacienteNombre ? `Notas del equipo terapéutico sobre ${pacienteNombre}` : 'Notas del equipo terapéutico'}
+          </div>
         </div>
       </div>
 

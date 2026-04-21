@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 
-const PACIENTES = ['Roberto Méndez', 'Carmen Villalba', 'Héctor Rodríguez', 'Sofía Blanco']
 const CATEGORIAS = ['Cognitiva', 'Física', 'Bienestar', 'Social', 'Comunicación']
 
 const MOCK = [
@@ -22,7 +21,7 @@ const CAT_COLORS = {
   Comunicación: { color: 'var(--pink)', bg: 'var(--pink2)' },
 }
 
-function ModalNueva({ onClose, onSave }) {
+function ModalNueva({ onClose, onSave, pacientes }) {
   const [form, setForm] = useState({ titulo: '', paciente: '', categoria: 'Cognitiva', frecuencia: 'Diaria', descripcion: '' })
   const [saving, setSaving] = useState(false)
 
@@ -52,7 +51,7 @@ function ModalNueva({ onClose, onSave }) {
               <label className="fl">Paciente *</label>
               <select className="fs" value={form.paciente} onChange={e => setForm(f => ({ ...f, paciente: e.target.value }))}>
                 <option value="">Seleccioná…</option>
-                {PACIENTES.map(p => <option key={p} value={p}>{p}</option>)}
+                {pacientes.map(p => <option key={p.id ?? p} value={p.nombre ?? p}>{p.nombre ?? p}</option>)}
               </select>
             </div>
             <div className="fr2">
@@ -91,30 +90,93 @@ function ModalNueva({ onClose, onSave }) {
 export default function TerIntActividades() {
   const { authFetch } = useAuth()
   const [actividades, setActividades] = useState([])
+  const [pacientes, setPacientes]     = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal]     = useState(false)
   const [filtroPac, setFiltroPac] = useState('todos')
   const [toast, setToast]     = useState('')
 
   useEffect(() => {
+    // Backend devuelve: {id, terapeuta_id, paciente_id, titulo, descripcion, frecuencia, activa, …}
+    // Frontend espera: {id, titulo, paciente, categoria, frecuencia, completadas, total, activa}
+    function normalizeActividad(a, pacsMap) {
+      const pac = pacsMap?.[a.paciente_id]
+      return {
+        id:          a.id,
+        titulo:      a.titulo,
+        paciente:    pac?.nombre || a.paciente || 'Paciente',
+        categoria:   a.categoria || 'Bienestar',
+        frecuencia:  a.frecuencia ? (a.frecuencia.charAt(0).toUpperCase() + a.frecuencia.slice(1)) : 'Diaria',
+        completadas: a.completadas ?? 0,
+        total:       a.total ?? 7,
+        activa:      a.activa ?? true,
+      }
+    }
+
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/actividades/')
-        if (res.ok) {
-          const data = await res.json()
-          setActividades(Array.isArray(data) && data.length > 0 ? data : MOCK)
-        } else { setActividades(MOCK) }
-      } catch { setActividades(MOCK) }
+        const [resPacs, resActs] = await Promise.allSettled([
+          authFetch('/api/v1/pacientes/'),
+          authFetch('/api/v1/actividades/'),
+        ])
+        let pacsMap = {}
+        if (resPacs.status === 'fulfilled' && resPacs.value.ok) {
+          const pacs = await resPacs.value.json()
+          if (Array.isArray(pacs) && pacs.length > 0) {
+            setPacientes(pacs.map(p => ({ id: p.id, nombre: p.nombre_enc || 'Paciente' })))
+            pacs.forEach(p => { pacsMap[p.id] = p })
+          }
+        }
+        if (resActs.status === 'fulfilled' && resActs.value.ok) {
+          const data = await resActs.value.json()
+          const norm = Array.isArray(data) ? data.map(a => normalizeActividad(a, pacsMap)) : []
+          setActividades(norm)
+        } else { setActividades([]) }
+      } catch { setActividades(MOCK) }  // error de red → mock
       finally { setLoading(false) }
     }
     cargar()
   }, [authFetch])
 
-  function handleSave(form) {
-    setActividades(prev => [{ id: Date.now(), ...form, completadas: 0, total: 7, activa: true }, ...prev])
+  const FREQ_MAP = { 'Diaria': 'diaria', 'Semanal': 'semanal', 'Quincenal': 'quincenal', 'Mensual': 'libre' }
+
+  async function handleSave(form) {
+    // El form usa nombre de paciente; buscamos el id desde el estado
+    const pac = pacientes.find(p => (p.nombre ?? p) === form.paciente)
+
+    try {
+      const res = await authFetch('/api/v1/actividades/', {
+        method: 'POST',
+        body: JSON.stringify({
+          paciente_id: pac?.id ?? null,
+          titulo:      form.titulo,
+          descripcion: form.descripcion || null,
+          frecuencia:  FREQ_MAP[form.frecuencia] ?? 'diaria',
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setActividades(prev => [{
+          id:          data.id,
+          titulo:      data.titulo,
+          paciente:    form.paciente,
+          categoria:   form.categoria,
+          frecuencia:  form.frecuencia,
+          completadas: 0,
+          total:       7,
+          activa:      true,
+        }, ...prev])
+        setToast('Actividad creada correctamente.')
+      } else {
+        setToast('Error al crear la actividad.')
+      }
+    } catch {
+      // Fallback local
+      setActividades(prev => [{ id: Date.now(), ...form, completadas: 0, total: 7, activa: true }, ...prev])
+      setToast('Guardada localmente (sin conexión).')
+    }
     setModal(false)
-    setToast('Actividad creada correctamente.')
     setTimeout(() => setToast(''), 2500)
   }
 
@@ -135,9 +197,9 @@ export default function TerIntActividades() {
         <button className={`btn btn-sm ${filtroPac === 'todos' ? 'btn-p' : 'btn-s'}`} onClick={() => setFiltroPac('todos')}>
           Todos los pacientes
         </button>
-        {PACIENTES.map(p => (
-          <button key={p} className={`btn btn-sm ${filtroPac === p ? 'btn-p' : 'btn-s'}`} onClick={() => setFiltroPac(p)}>
-            {p.split(' ')[0]}
+        {pacientes.map(p => (
+          <button key={p.id ?? p} className={`btn btn-sm ${filtroPac === (p.nombre ?? p) ? 'btn-p' : 'btn-s'}`} onClick={() => setFiltroPac(p.nombre ?? p)}>
+            {(p.nombre ?? p).split(' ')[0]}
           </button>
         ))}
       </div>
@@ -173,7 +235,7 @@ export default function TerIntActividades() {
         </div>
       )}
 
-      {modal && <ModalNueva onClose={() => setModal(false)} onSave={handleSave} />}
+      {modal && <ModalNueva pacientes={pacientes} onClose={() => setModal(false)} onSave={handleSave} />}
     </div>
   )
 }

@@ -2,6 +2,15 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
+const IcoBot = () => (
+  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+    <rect x="3" y="11" width="18" height="10" rx="2"/>
+    <path strokeLinecap="round" d="M12 11V7m-4 4V9a4 4 0 018 0v2"/>
+    <circle cx="9" cy="16" r="1" fill="currentColor"/>
+    <circle cx="15" cy="16" r="1" fill="currentColor"/>
+  </svg>
+)
+
 // ─── Roles disponibles para seleccionar ───────────────────────────
 const ROLES = [
   { key: 'familia',  icon: '👨‍👩‍👧', label: 'Familia' },
@@ -10,13 +19,6 @@ const ROLES = [
   { key: 'admin',    icon: '🔐',    label: 'Admin' },
 ]
 
-// Credenciales de demo — solo para desarrollo
-const DEMO = {
-  familia:  { email: 'maria@familia.com',  password: '12345678' },
-  'ter-int': { email: 'garcia@int.com',    password: '12345678' },
-  'ter-ext': { email: 'rossi@ext.com',     password: '12345678' },
-  admin:    { email: 'admin@sistema.com',  password: 'admin123' },
-}
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -24,16 +26,16 @@ export default function LoginPage() {
   const location  = useLocation()
 
   const [selectedRole, setSelectedRole] = useState('familia')
-  const [email,        setEmail]        = useState(DEMO['familia'].email)
-  const [password,     setPassword]     = useState(DEMO['familia'].password)
+  const [email,        setEmail]        = useState('')
+  const [password,     setPassword]     = useState('')
   const [error,        setError]        = useState('')
   const [loading,      setLoading]      = useState(false)
 
-  // Cambio de rol → autocompletar credenciales de demo
+  // Cambio de rol → limpia campos y error
   function handleRoleSelect(key) {
     setSelectedRole(key)
-    setEmail(DEMO[key].email)
-    setPassword(DEMO[key].password)
+    setEmail('')
+    setPassword('')
     setError('')
   }
 
@@ -84,7 +86,10 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <form onSubmit={handleLogin} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Inputs trampa: engañan al navegador para que no rellene los campos reales */}
+          <input type="text"     style={{ display: 'none' }} aria-hidden="true" readOnly />
+          <input type="password" style={{ display: 'none' }} aria-hidden="true" readOnly />
 
           {/* Selector de rol */}
           <div>
@@ -111,7 +116,8 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              autoComplete="email"
+              placeholder="tu@correo.com"
+              autoComplete="off"
               required
             />
           </div>
@@ -124,7 +130,8 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              autoComplete="current-password"
+              placeholder="••••••••"
+              autoComplete="new-password"
               required
             />
           </div>
@@ -164,6 +171,22 @@ export default function LoginPage() {
           {/* Nota de seguridad */}
           <div className="txs tm" style={{ textAlign: 'center' }}>
             Sistema protegido · TLS 1.3 · Datos cifrados AES-256
+          </div>
+
+          {/* Separador — acceso al Asistente público */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 2 }}>
+            <div className="txs" style={{ color: 'var(--text2)', textAlign: 'center', marginBottom: 8 }}>
+              ¿Tenés dudas sobre el desarrollo de tu hijo?
+            </div>
+            <button
+              type="button"
+              className="btn btn-s btn-full"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+              onClick={() => navigate('/asistente')}
+            >
+              <IcoBot />
+              Consultar al Asistente TEA — sin registrarse
+            </button>
           </div>
 
         </form>

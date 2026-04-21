@@ -106,6 +106,17 @@ export default function AdminAuditoria() {
   const [pagina, setPagina]       = useState(1)
   const POR_PAGINA = 10
 
+  // Backend devuelve accion="login|create|…" y tipo=recurso_tipo ("usuario", "sesion"…)
+  // El frontend usa `tipo` como el tipo de acción → mapeamos accion → tipo
+  function normalizeLog(l) {
+    return {
+      ...l,
+      tipo: l.accion || l.tipo || 'create',   // accion tiene el valor correcto (login, create, etc.)
+      desc: l.desc || l.accion || '',
+      ip:   l.ip   || l.ip_origen || '—',
+    }
+  }
+
   useEffect(() => {
     async function cargar() {
       setLoading(true)
@@ -113,12 +124,13 @@ export default function AdminAuditoria() {
         const res = await authFetch('/api/v1/auditoria/?limit=100')
         if (res.ok) {
           const data = await res.json()
-          setLogs(Array.isArray(data) && data.length > 0 ? data : MOCK_LOGS)
+          const norm = Array.isArray(data) ? data.map(normalizeLog) : []
+          setLogs(norm)
         } else {
-          setLogs(MOCK_LOGS)
+          setLogs([])
         }
       } catch {
-        setLogs(MOCK_LOGS)
+        setLogs(MOCK_LOGS)  // error de red → mock
       } finally {
         setLoading(false)
       }

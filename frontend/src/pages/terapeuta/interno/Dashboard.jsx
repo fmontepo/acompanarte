@@ -31,6 +31,7 @@ export default function TerIntDashboard() {
   const navigate = useNavigate()
   const [pacientes, setPacientes] = useState([])
   const [alertas, setAlertas]     = useState([])
+  const [kpis, setKpis]           = useState({ sesiones: 0, alertas: 0, actividades: 0 })
   const [loading, setLoading]     = useState(true)
 
   useEffect(() => {
@@ -40,10 +41,11 @@ export default function TerIntDashboard() {
         const res = await authFetch('/api/v1/terapeuta/dashboard')
         if (res.ok) {
           const data = await res.json()
-          setPacientes(data.pacientes ?? MOCK_PACIENTES)
-          setAlertas(data.alertas ?? MOCK_ALERTAS)
-        } else { setPacientes(MOCK_PACIENTES); setAlertas(MOCK_ALERTAS) }
-      } catch { setPacientes(MOCK_PACIENTES); setAlertas(MOCK_ALERTAS) }
+          setPacientes(data.pacientes ?? [])
+          setAlertas(data.alertas ?? [])
+          setKpis(data.kpis ?? { sesiones: 0, alertas: 0, actividades: 0 })
+        } else { setPacientes([]); setAlertas([]); setKpis({ sesiones: 0, alertas: 0, actividades: 0 }) }
+      } catch { setPacientes(MOCK_PACIENTES); setAlertas(MOCK_ALERTAS); setKpis({ sesiones: 8, alertas: MOCK_ALERTAS.length, actividades: 17 }) }  // error de red → mock
       finally { setLoading(false) }
     }
     cargar()
@@ -70,9 +72,9 @@ export default function TerIntDashboard() {
       <div className="g4 mb20">
         {[
           { label: 'Pacientes activos',      value: pacientes.length,                                          color: 'var(--teal)' },
-          { label: 'Sesiones esta semana',   value: 8,                                                          color: 'var(--purple)' },
+          { label: 'Sesiones esta semana',   value: kpis.sesiones,                                             color: 'var(--purple)' },
           { label: 'Alertas pendientes',     value: alertas.length,                                             color: alertas.length > 0 ? 'var(--amber)' : 'var(--teal)' },
-          { label: 'Actividades asignadas',  value: 17,                                                         color: 'var(--blue)' },
+          { label: 'Actividades asignadas',  value: kpis.actividades,                                          color: 'var(--blue)' },
         ].map(k => (
           <div key={k.label} className="stat">
             <div className="sn" style={{ color: k.color }}>{k.value}</div>

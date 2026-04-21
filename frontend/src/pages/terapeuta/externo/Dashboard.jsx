@@ -26,10 +26,10 @@ export default function TerExtDashboard() {
         const res = await authFetch('/api/v1/terapeuta/externo/dashboard')
         if (res.ok) {
           const data = await res.json()
-          setPacientes(data.pacientes ?? MOCK_PACIENTES)
-          setAgenda(data.agenda ?? MOCK_AGENDA)
-        } else { setPacientes(MOCK_PACIENTES); setAgenda(MOCK_AGENDA) }
-      } catch { setPacientes(MOCK_PACIENTES); setAgenda(MOCK_AGENDA) }
+          setPacientes(data.pacientes ?? [])
+          setAgenda(data.agenda ?? [])
+        } else { setPacientes([]); setAgenda([]) }
+      } catch { setPacientes(MOCK_PACIENTES); setAgenda(MOCK_AGENDA) }  // error de red → mock
       finally { setLoading(false) }
     }
     cargar()

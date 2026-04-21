@@ -28,21 +28,41 @@ export default function FamiliarActividades() {
         const res = await authFetch('/api/v1/familiar/actividades')
         if (res.ok) {
           const data = await res.json()
-          setActividades(Array.isArray(data) && data.length > 0 ? data : MOCK)
-        } else { setActividades(MOCK) }
-      } catch { setActividades(MOCK) }
+          setActividades(Array.isArray(data) ? data : [])
+        } else { setActividades([]) }
+      } catch { setActividades(MOCK) }  // error de red → mock
       finally { setLoading(false) }
     }
     cargar()
   }, [authFetch])
 
-  function toggleCompletada(id) {
+  async function toggleCompletada(id) {
+    const act = actividades.find(a => a.id === id)
+    if (!act) return
+
+    // Actualización optimista
     setActividades(prev => prev.map(a => a.id === id
       ? { ...a, completada: !a.completada, progreso: a.completada ? 0 : 100 }
       : a
     ))
-    const act = actividades.find(a => a.id === id)
-    setToast(act?.completada ? 'Actividad marcada como pendiente.' : '¡Actividad completada!')
+
+    if (!act.completada) {
+      // Marcar como completada → registrar progreso en el backend
+      try {
+        await authFetch('/api/v1/progreso/', {
+          method: 'POST',
+          body: JSON.stringify({ actividad_id: id }),
+        })
+        setToast('¡Actividad completada!')
+      } catch {
+        // Si falla, revertir el cambio optimista
+        setActividades(prev => prev.map(a => a.id === id ? { ...a, completada: false, progreso: 0 } : a))
+        setToast('Error al guardar. Intentá de nuevo.')
+      }
+    } else {
+      // Desmarcar — no hay endpoint de borrado, queda en estado local
+      setToast('Actividad marcada como pendiente.')
+    }
     setTimeout(() => setToast(''), 2500)
   }
 

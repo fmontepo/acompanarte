@@ -27,35 +27,60 @@ const RESPUESTAS_IA = {
   equipo: 'El equipo terapéutico de Roberto está integrado por el Dr. Luis Herrera como terapeuta principal y la Lic. Patricia Ruiz en terapia cognitiva. Ambos están disponibles para consultas a través del sistema.',
 }
 
-const SUGERENCIAS = [
-  '¿Cómo está Roberto esta semana?',
-  '¿Qué actividades tiene hoy?',
-  '¿Quiénes son sus terapeutas?',
-  '¿Qué hago si se desorienta?',
-]
-
-function getIA(texto) {
-  const t = texto.toLowerCase()
-  if (t.includes('bienestar') || t.includes('cómo está') || t.includes('estado')) return RESPUESTAS_IA.bienestar
-  if (t.includes('actividad') || t.includes('ejercicio') || t.includes('tarea')) return RESPUESTAS_IA.actividades
-  if (t.includes('terapeuta') || t.includes('equipo') || t.includes('médico') || t.includes('doctor')) return RESPUESTAS_IA.equipo
-  const idx = Math.floor(Math.random() * RESPUESTAS_IA.default.length)
-  return RESPUESTAS_IA.default[idx]
+function getSugerencias(nombre) {
+  return [
+    `¿Cómo está ${nombre} esta semana?`,
+    '¿Qué actividades tiene hoy?',
+    '¿Quiénes son sus terapeutas?',
+    '¿Qué hago si se desorienta?',
+  ]
 }
 
-const INTRO = {
-  id: 0,
-  rol: 'ia',
-  texto: '¡Hola! Soy el asistente de **Acompañarte**. Estoy aquí para ayudarte con información sobre el estado de Roberto, sus actividades, el equipo terapéutico y cualquier duda que tengas sobre su cuidado.\n\n¿En qué te puedo ayudar hoy?',
-  hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+function getIA(texto, nombre) {
+  const t = texto.toLowerCase()
+  if (t.includes('bienestar') || t.includes('cómo está') || t.includes('estado')) {
+    return RESPUESTAS_IA.bienestar.replace(/Roberto/g, nombre)
+  }
+  if (t.includes('actividad') || t.includes('ejercicio') || t.includes('tarea')) {
+    return RESPUESTAS_IA.actividades.replace(/Roberto/g, nombre)
+  }
+  if (t.includes('terapeuta') || t.includes('equipo') || t.includes('médico') || t.includes('doctor')) {
+    return RESPUESTAS_IA.equipo.replace(/Roberto/g, nombre)
+  }
+  const idx = Math.floor(Math.random() * RESPUESTAS_IA.default.length)
+  return RESPUESTAS_IA.default[idx].replace(/Roberto/g, nombre)
+}
+
+function makeIntro(nombre) {
+  return {
+    id: 0,
+    rol: 'ia',
+    texto: `¡Hola! Soy el asistente de **Acompañarte**. Estoy aquí para ayudarte con información sobre el estado de ${nombre}, sus actividades, el equipo terapéutico y cualquier duda que tengas sobre su cuidado.\n\n¿En qué te puedo ayudar hoy?`,
+    hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+  }
 }
 
 export default function FamiliarAsistente() {
   const { user, authFetch } = useAuth()
-  const [mensajes, setMensajes] = useState([INTRO])
+  const [pacienteNombre, setPacienteNombre] = useState('tu familiar')
+  const [mensajes, setMensajes] = useState([makeIntro('tu familiar')])
   const [input, setInput]       = useState('')
   const [loading, setLoading]   = useState(false)
   const bottomRef               = useRef(null)
+
+  // Cargar nombre real del paciente
+  useEffect(() => {
+    authFetch('/api/v1/familiar/dashboard')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.paciente?.nombre) {
+          const nombre = data.paciente.nombre
+          setPacienteNombre(nombre)
+          setMensajes([makeIntro(nombre)])
+        }
+      })
+      .catch(() => {})
+  }, [authFetch])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -84,7 +109,7 @@ export default function FamiliarAsistente() {
         setMensajes(prev => [...prev, {
           id: Date.now() + 1,
           rol: 'ia',
-          texto: data.respuesta ?? getIA(texto),
+          texto: data.respuesta ?? getIA(texto, pacienteNombre),
           hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
         }])
       } else {
@@ -96,7 +121,7 @@ export default function FamiliarAsistente() {
       setMensajes(prev => [...prev, {
         id: Date.now() + 1,
         rol: 'ia',
-        texto: getIA(texto),
+        texto: getIA(texto, pacienteNombre),
         hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
       }])
     } finally {
@@ -207,7 +232,7 @@ export default function FamiliarAsistente() {
       {/* Sugerencias */}
       {mensajes.length <= 1 && (
         <div className="flex ic g6 mb12" style={{ flexWrap: 'wrap' }}>
-          {SUGERENCIAS.map(s => (
+          {getSugerencias(pacienteNombre).map(s => (
             <button key={s} className="btn btn-s btn-sm" onClick={() => enviar(s)}
               style={{ fontSize: 12 }}>
               {s}
