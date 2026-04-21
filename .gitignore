@@ -17,7 +17,11 @@ dist/
 # Modelos IA (demasiado grandes para Git)
 *.gguf
 *.bin
-models/
+*.pkl
+*.h5
+*.onnx
+*.pt
+*.bin
 
 # Archivos temporales / basura
 *.zip

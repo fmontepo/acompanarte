@@ -34,15 +34,17 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - hf_cache:/hf_cache   # cache del modelo fuera de /app para evitar conflictos de permisos
     environment:
       DATABASE_URL: postgresql+asyncpg://${DB_USER:-acomp_user}:${DB_PASSWORD:-acomp_pass}@db:5432/${DB_NAME:-acompanarte_db}
       SECRET_KEY: ${SECRET_KEY:-cambia_esto_en_produccion}
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
       OLLAMA_BASE_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-mistral:7b-instruct}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-cambia_esto_en_produccion}
+      HF_HOME: /hf_cache
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -65,3 +67,4 @@ services:
 
 volumes:
   postgres_data:
+  hf_cache:       # modelo de embeddings — persiste entre reinicios del contenedor
