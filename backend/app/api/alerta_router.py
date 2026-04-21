@@ -25,7 +25,7 @@ router = APIRouter(prefix="/alertas", tags=["Alertas"])
 @router.get(
     "/",
     response_model=List[AlertaRead],
-    dependencies=[Depends(require_roles("admin", "terapeuta"))],
+    dependencies=[Depends(require_roles("admin", "ter-int", "ter-ext"))],
     summary="Listar alertas pendientes",
 )
 async def listar_alertas(
@@ -51,7 +51,7 @@ async def listar_alertas(
 @router.get(
     "/{alerta_id}",
     response_model=AlertaRead,
-    dependencies=[Depends(require_roles("admin", "terapeuta"))],
+    dependencies=[Depends(require_roles("admin", "ter-int", "ter-ext"))],
     summary="Obtener detalle de una alerta",
 )
 async def obtener_alerta(
@@ -76,7 +76,7 @@ async def obtener_alerta(
 @router.post(
     "/{alerta_id}/resolver",
     response_model=AlertaRead,
-    dependencies=[Depends(require_roles("admin", "terapeuta"))],
+    dependencies=[Depends(require_roles("admin", "ter-int", "ter-ext"))],
     summary="Marcar alerta como resuelta",
 )
 async def resolver_alerta(
