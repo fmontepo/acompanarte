@@ -34,6 +34,10 @@ RUN addgroup --system appgroup && \
     adduser --system --ingroup appgroup appuser && \
     chown -R appuser:appgroup /app
 
+# --- Directorio de cache para HuggingFace (modelo de embeddings) ---
+# Creado aquí con el owner correcto para que el volumen Docker sea escribible por appuser
+RUN mkdir -p /hf_cache && chown appuser:appgroup /hf_cache
+
 USER appuser
 
 # --- Puerto expuesto (documentación) ---

@@ -13,6 +13,7 @@ class RecursoCreate(BaseModel):
     descripcion: Optional[str] = None
     tipo: str
     url_storage: Optional[str] = None
+    contenido_texto: Optional[str] = None   # Texto del recurso — genera el embedding RAG
 
     @field_validator("tipo")
     @classmethod
@@ -35,6 +36,7 @@ class RecursoRead(BaseModel):
     descripcion: Optional[str] = None
     tipo: str
     url_storage: Optional[str] = None
+    contenido_texto: Optional[str] = None
     validado: bool
     activo: bool
     subido_por: UUID

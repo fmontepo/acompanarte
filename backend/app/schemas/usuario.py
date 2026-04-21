@@ -10,9 +10,9 @@ import re
 
 
 # ---------------------------------------------------------------------------
-# Roles válidos del sistema
+# Roles válidos del sistema (coinciden con roles.key en la DB)
 # ---------------------------------------------------------------------------
-ROLES_VALIDOS = {"admin", "terapeuta", "familiar"}
+ROLES_VALIDOS = {"admin", "familia", "ter-int", "ter-ext"}
 
 
 # ---------------------------------------------------------------------------
@@ -31,7 +31,7 @@ class UsuarioBase(BaseModel):
     @classmethod
     def validar_rol(cls, v: str) -> str:
         if v not in ROLES_VALIDOS:
-            raise ValueError(f"Rol inválido. Valores aceptados: {ROLES_VALIDOS}")
+            raise ValueError(f"Rol inválido. Valores aceptados: {sorted(ROLES_VALIDOS)}")
         return v
 
     @field_validator("nombre", "apellido")
@@ -70,6 +70,8 @@ class UsuarioUpdate(BaseModel):
     fecha_nacimiento: Optional[date] = None
     domicilio: Optional[str] = None
     email: Optional[EmailStr] = None
+    activo: Optional[bool] = None      # admin: activar / desactivar usuario
+    rol: Optional[str] = None          # admin: cambiar rol
 
     @field_validator("nombre", "apellido", mode="before")
     @classmethod
@@ -78,9 +80,17 @@ class UsuarioUpdate(BaseModel):
             raise ValueError("El campo no puede estar vacío")
         return v
 
+    @field_validator("rol")
+    @classmethod
+    def validar_rol_si_presente(cls, v):
+        if v is not None and v not in {"admin", "familia", "ter-int", "ter-ext"}:
+            raise ValueError(f"Rol inválido: {v}")
+        return v
+
 
 # ---------------------------------------------------------------------------
 # Read — respuesta de la API (nunca expone password_hash)
+# Maneja tanto dict como instancias del modelo SQLAlchemy (rol es relación).
 # ---------------------------------------------------------------------------
 class UsuarioRead(BaseModel):
     id: UUID
@@ -92,13 +102,41 @@ class UsuarioRead(BaseModel):
     domicilio: Optional[str] = None
     rol: str
     activo: bool
-    email_verificado: bool
+    email_verificado: bool = False
     bloqueado: bool
     creado_en: Optional[datetime] = None
     actualizado_en: Optional[datetime] = None
     ultimo_login: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def extraer_rol_relacion(cls, v):
+        """
+        Cuando `v` es una instancia SQLAlchemy, `v.rol` es el objeto Rol
+        (relación ORM), no un string. Este validador extrae `rol.key`.
+        """
+        if hasattr(v, "__tablename__"):
+            rol_obj = getattr(v, "rol", None)
+            rol_key = (rol_obj.key if rol_obj and hasattr(rol_obj, "key") else "")
+            return {
+                "id":               v.id,
+                "email":            v.email,
+                "nombre":           v.nombre or "",
+                "apellido":         v.apellido or "",
+                "telefono":         getattr(v, "telefono", None),
+                "fecha_nacimiento": getattr(v, "fecha_nacimiento", None),
+                "domicilio":        getattr(v, "domicilio", None),
+                "rol":              rol_key,
+                "activo":           v.activo,
+                "email_verificado": getattr(v, "email_verificado", False),
+                "bloqueado":        v.bloqueado,
+                "creado_en":        v.creado_en,
+                "actualizado_en":   v.actualizado_en,
+                "ultimo_login":     v.ultimo_login,
+            }
+        return v
 
 
 # ---------------------------------------------------------------------------

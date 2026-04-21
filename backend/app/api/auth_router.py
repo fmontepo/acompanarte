@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload  # noqa: already imported
 from jose import jwt
 from passlib.context import CryptContext
 import os
@@ -155,8 +155,14 @@ async def register(
     )
     db.add(nuevo)
     await db.commit()
-    await db.refresh(nuevo)
-    return nuevo
+
+    # Recargar con la relación rol cargada (necesario para serializar UsuarioRead)
+    result = await db.execute(
+        select(Usuario)
+        .options(joinedload(Usuario.rol))
+        .where(Usuario.id == nuevo.id)
+    )
+    return result.scalar_one()
 
 
 # ---------------------------------------------------------------------------

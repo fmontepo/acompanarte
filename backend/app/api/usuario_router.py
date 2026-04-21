@@ -4,17 +4,65 @@
 
 from typing import List
 from uuid import UUID
+import uuid as _uuid
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from passlib.context import CryptContext
 
 from app.db.session import get_db
 from app.models.usuario import Usuario
+from app.models.rol import Rol
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
 from app.api.deps import CurrentUser, require_roles
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
+_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/usuarios — solo admin: crear usuario
+# ---------------------------------------------------------------------------
+@router.post(
+    "/",
+    response_model=UsuarioRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles("admin"))],
+    summary="Crear nuevo usuario (admin)",
+)
+async def crear_usuario(
+    data: UsuarioCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    # Verificar email único
+    existing = await db.execute(select(Usuario).where(Usuario.email == data.email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El correo ya está registrado.")
+
+    # Buscar el rol
+    rol_q = await db.execute(select(Rol).where(Rol.key == data.rol))
+    rol = rol_q.scalar_one_or_none()
+    if not rol:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Rol '{data.rol}' no existe.")
+
+    n = (data.nombre or "")[:1].upper()
+    a = (data.apellido or "")[:1].upper()
+    nuevo = Usuario(
+        id=_uuid.uuid4(),
+        email=data.email,
+        nombre=data.nombre,
+        apellido=data.apellido,
+        password_hash=_pwd.hash(data.password),
+        rol_id=rol.id,
+        avatar_initials=f"{n}{a}" or "?",
+        avatar_class={"familia":"av-tl","ter-int":"av-tl","ter-ext":"av-pp","admin":"av-gr"}.get(data.rol, "av-gr"),
+    )
+    db.add(nuevo)
+    await db.commit()
+
+    result = await db.execute(select(Usuario).where(Usuario.id == nuevo.id))
+    return result.scalar_one()
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +81,6 @@ async def listar_usuarios(
 ):
     result = await db.execute(
         select(Usuario)
-        .where(Usuario.activo == True)
         .offset(skip)
         .limit(limit)
         .order_by(Usuario.creado_en.desc())
@@ -107,6 +154,16 @@ async def actualizar_usuario(
 
     # Actualizar solo los campos enviados (partial update)
     update_data = data.model_dump(exclude_unset=True)
+
+    # Si viene 'rol', buscar el objeto Rol y actualizar rol_id
+    if "rol" in update_data:
+        rol_key = update_data.pop("rol")
+        rol_q = await db.execute(select(Rol).where(Rol.key == rol_key))
+        rol_obj = rol_q.scalar_one_or_none()
+        if not rol_obj:
+            raise HTTPException(status_code=400, detail=f"Rol '{rol_key}' no existe.")
+        usuario.rol_id = rol_obj.id
+
     for field, value in update_data.items():
         setattr(usuario, field, value)
 

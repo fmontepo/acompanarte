@@ -83,6 +83,7 @@ class Usuario(Base):
     # ── Estado de la cuenta ────────────────────────────────────────
     # Campos preservados de la versión anterior sin modificación
     activo = Column(Boolean, nullable=False, default=True)
+    email_verificado = Column(Boolean, nullable=False, default=False)
     bloqueado = Column(Boolean, nullable=False, default=False)
     intentos_fallidos = Column(Integer, nullable=False, default=0)
     bloqueado_hasta = Column(DateTime(timezone=True), nullable=True)
@@ -95,7 +96,8 @@ class Usuario(Base):
     )
     actualizado_en = Column(
         DateTime(timezone=True),
-        nullable=True,
+        nullable=False,
+        default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
     ultimo_login = Column(DateTime(timezone=True), nullable=True)

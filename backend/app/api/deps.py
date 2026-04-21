@@ -9,6 +9,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 import os
 
 from app.db.session import get_db
@@ -55,7 +56,9 @@ async def get_current_user(
         raise credentials_exception
 
     result = await db.execute(
-        select(Usuario).where(Usuario.id == user_id)
+        select(Usuario)
+        .options(joinedload(Usuario.rol))
+        .where(Usuario.id == user_id)
     )
     usuario = result.scalar_one_or_none()
 
@@ -96,7 +99,9 @@ def require_roles(*roles: str):
     async def role_checker(
         current_user: CurrentUser,
     ) -> Usuario:
-        if current_user.rol not in roles:
+        # current_user.rol es la relación (objeto Rol); comparamos por .key
+        rol_key = current_user.rol.key if current_user.rol else ""
+        if rol_key not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Acceso denegado. Roles permitidos: {', '.join(roles)}"
