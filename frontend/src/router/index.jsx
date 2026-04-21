@@ -23,14 +23,17 @@ import TerExtDash      from '../pages/terapeuta/externo/Dashboard'
 import TerExtRegistros from '../pages/terapeuta/externo/Registros'
 
 // Admin
-import AdminDash      from '../pages/admin/Dashboard'
-import AdminUsuarios  from '../pages/admin/Usuarios'
-import AdminAuditoria from '../pages/admin/Auditoria'
+import AdminDash            from '../pages/admin/Dashboard'
+import AdminUsuarios        from '../pages/admin/Usuarios'
+import AdminAuditoria       from '../pages/admin/Auditoria'
+import AdminContactos       from '../pages/admin/ContactosPublicos'
+import AdminReglasIA        from '../pages/admin/ReglasIA'
 
 // Auth y errores
-import LoginPage      from '../pages/LoginPage'
-import OnboardingPage from '../pages/OnboardingPage'
-import NotFound       from '../pages/NotFound'
+import LoginPage        from '../pages/LoginPage'
+import OnboardingPage   from '../pages/OnboardingPage'
+import NotFound         from '../pages/NotFound'
+import AsistentePublico from '../pages/AsistentePublico'
 
 // ─────────────────────────────────────────────────────────────
 // ProtectedRoute
@@ -81,7 +84,11 @@ export default function AppRouter() {
         {/* Raíz → login */}
         <Route index element={<Navigate to="/login" replace />} />
 
-        {/* ── Rutas públicas ── */}
+        {/* ── Asistente TEA público — sin auth, sin AppShell ── */}
+        {/* Accesible para cualquier persona, incluso sin cuenta */}
+        <Route path="/asistente" element={<AsistentePublico />} />
+
+        {/* ── Rutas públicas (redirigen si ya hay sesión) ── */}
         <Route element={<PublicRoute />}>
           <Route path="/login"      element={<LoginPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
@@ -126,6 +133,8 @@ export default function AppRouter() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard"  element={<AdminDash />} />
             <Route path="usuarios"   element={<AdminUsuarios />} />
+            <Route path="contactos"  element={<AdminContactos />} />
+            <Route path="reglas-ia"  element={<AdminReglasIA />} />
             <Route path="auditoria"  element={<AdminAuditoria />} />
           </Route>
         </Route>

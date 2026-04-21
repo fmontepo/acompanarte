@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 
 // ─── Iconos SVG inline — sin dependencia externa ──────────────────
@@ -69,6 +69,20 @@ const ICONS = {
         d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
     </svg>
   ),
+  mail: (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+      stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+    </svg>
+  ),
+  shield: (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+      stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+    </svg>
+  ),
 }
 
 // Mapeo de screen id → ruta React Router
@@ -90,6 +104,8 @@ const SCREEN_TO_PATH = {
   // admin
   'admin-dash':             '/admin/dashboard',
   'admin-usuarios':         '/admin/usuarios',
+  'admin-contactos':        '/admin/contactos',
+  'admin-reglas':           '/admin/reglas-ia',
   'admin-auditoria':        '/admin/auditoria',
 }
 
@@ -103,10 +119,23 @@ function resolveAlertPath(rolKey) {
 }
 
 export default function AppShell() {
-  const { user, logout } = useAuth()
+  const { user, logout, authFetch } = useAuth()
   const navigate  = useNavigate()
   const location  = useLocation()
   const [openModal, setOpenModal] = useState(null) // 'perfil'
+  const [alertBadge, setAlertBadge] = useState(0)
+
+  // Carga el conteo real de alertas para mostrar en el badge del sidebar
+  useEffect(() => {
+    if (!user) return
+    const rolesConAlertas = ['ter-int', 'familia']
+    if (!rolesConAlertas.includes(user.rol_key)) return
+
+    authFetch('/api/v1/alertas/?solo_pendientes=true&limit=50')
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setAlertBadge(Array.isArray(data) ? data.length : 0))
+      .catch(() => setAlertBadge(0))
+  }, [user, authFetch])
 
   if (!user) return null
 
@@ -145,9 +174,7 @@ export default function AppShell() {
   }
 
   // ── ¿Hay alertas? (dot rojo en el bell) ────────────────────────
-  const hasAlerts = user.nav_config
-    .flatMap(s => s.items)
-    .some(i => i.id === 'alertas' && i.badge > 0)
+  const hasAlerts = alertBadge > 0
 
   async function handleLogout() {
     await logout()
@@ -193,8 +220,8 @@ export default function AppShell() {
                     {ICONS[item.icon] ?? item.icon}
                   </span>
                   {item.label}
-                  {item.badge > 0 && (
-                    <span className="nbadge">{item.badge}</span>
+                  {item.id === 'alertas' && alertBadge > 0 && (
+                    <span className="nbadge">{alertBadge}</span>
                   )}
                 </div>
               ))}
