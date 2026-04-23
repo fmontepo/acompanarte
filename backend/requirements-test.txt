@@ -1,0 +1,22 @@
+# backend/requirements-test.txt
+# Dependencias adicionales solo para testing.
+# Instalar con: pip install -r requirements-test.txt --break-system-packages
+#
+# El stack de producción (requirements.txt) ya incluye httpx y pytest implícito
+# a través de FastAPI — acá solo agregamos lo que falta.
+
+# ─── Test runner ─────────────────────────────────────────────────────────────
+pytest==8.3.4
+pytest-asyncio==0.24.0
+anyio[trio]==4.6.2           # backend async recomendado para pytest-asyncio
+
+# ─── Cliente HTTP async para tests de integración ────────────────────────────
+# httpx ya está en requirements.txt — no duplicar la versión aquí.
+# Si el test no lo importa desde ahí, descommentar:
+# httpx==0.28.1
+
+# ─── SQLAlchemy async (ya en requirements.txt) ───────────────────────────────
+# sqlalchemy[asyncio]==2.0.36  ← ya incluido
+
+# ─── Opcional: Testcontainers para levantar Postgres efímero en CI ───────────
+# testcontainers[postgres]==4.8.1
