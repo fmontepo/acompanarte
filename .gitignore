@@ -32,3 +32,8 @@ routers.txt
 
 # Docker
 docker-compose\ -\ copia.yml
+# Entorno de producción — NUNCA commitear
+.env.prod
+nginx/certs/
+nginx/letsencrypt/
+backups/

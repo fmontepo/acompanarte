@@ -1,0 +1,42 @@
+# frontend/Dockerfile.prod
+# ─────────────────────────────────────────────────────────────────────────────
+# Build de PRODUCCIÓN en dos etapas:
+#   Stage 1 (builder): compila el bundle React con Vite
+#   Stage 2 (nginx):   sirve los archivos estáticos + actúa como reverse proxy
+#
+# El Dockerfile de DESARROLLO (Dockerfile) no se modifica.
+# Ambos coexisten en el mismo directorio.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Build ──────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Instalar dependencias primero para aprovechar caché de Docker
+COPY package*.json ./
+RUN npm ci
+
+# Copiar código fuente
+COPY . .
+
+# VITE_API_URL inyectada en build-time como URL relativa (/api/v1)
+# Así el frontend llama al mismo origen y Nginx hace el proxy al backend
+ARG VITE_API_URL=/api/v1
+ENV VITE_API_URL=$VITE_API_URL
+
+# Build de producción — genera /app/dist/
+RUN npm run build
+
+# ── Stage 2: Nginx con los archivos estáticos ────────────────────────────────
+FROM nginx:1.27-alpine
+
+# Copiar el build de React al directorio de Nginx
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# La configuración de Nginx se monta como volumen desde ./nginx/nginx.prod.conf
+# para poder modificarla sin reconstruir la imagen
+
+EXPOSE 80 443
+
+CMD ["nginx", "-g", "daemon off;"]

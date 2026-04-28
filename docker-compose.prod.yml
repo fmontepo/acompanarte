@@ -1,0 +1,98 @@
+# docker-compose.prod.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# Configuración de PRODUCCIÓN — NO modificar docker-compose.yml (desarrollo)
+#
+# Diferencias clave respecto al entorno de desarrollo:
+#   - Sin pgAdmin (no exponer herramientas de administración en producción)
+#   - Backend sin --reload y con --workers 2
+#   - Sin volúmenes de código fuente (no hot-reload)
+#   - Nginx como único punto de entrada (puertos 80/443)
+#   - Backend y DB sin puertos expuestos al exterior
+#   - Volúmenes de datos con sufijo _prod para no pisar los de desarrollo
+#
+# Uso:
+#   cp .env.prod.example .env.prod
+#   # Editar .env.prod con valores reales
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+
+  # ── Base de datos ─────────────────────────────────────────────────────────
+  db:
+    image: pgvector/pgvector:pg15
+    container_name: acompanarte_db_prod
+    restart: always
+    environment:
+      POSTGRES_USER:     ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB:       ${DB_NAME}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Sin puertos expuestos — solo accesible desde la red interna de Docker
+
+  # ── Backend FastAPI ───────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: acompanarte_backend_prod
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL:              postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      SECRET_KEY:                ${SECRET_KEY}
+      ALGORITHM:                 HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      OLLAMA_BASE_URL:           http://host.docker.internal:11434
+      OLLAMA_MODEL:              ${OLLAMA_MODEL:-qwen2.5:3b}
+      EMBEDDING_MODEL:           ${EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      ENCRYPTION_KEY:            ${ENCRYPTION_KEY}
+      HF_HOME:                   /hf_cache
+    volumes:
+      - hf_cache_prod:/hf_cache        # modelo de embeddings persistido
+    command: >
+      uvicorn app.main:app
+        --host 0.0.0.0
+        --port 8000
+        --workers 2
+        --proxy-headers
+        --forwarded-allow-ips='*'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Sin puertos expuestos — Nginx es el único punto de entrada
+
+  # ── Frontend + Nginx (reverse proxy) ─────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+    container_name: acompanarte_frontend_prod
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro          # certificados SSL (Let's Encrypt)
+      - ./nginx/letsencrypt:/var/www/certbot:ro    # challenge ACME para renovación
+
+# ── Volúmenes de producción ───────────────────────────────────────────────
+# Sufijo _prod para coexistir con los volúmenes de desarrollo
+volumes:
+  postgres_data_prod:
+  hf_cache_prod:
