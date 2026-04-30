@@ -37,8 +37,8 @@ export default function FamiliarSeguimientos() {
       setLoading(true)
       try {
         const [resDash, resSeg] = await Promise.allSettled([
-          authFetch('/api/v1/familiar/dashboard'),
-          authFetch('/api/v1/familiar/seguimientos'),
+          authFetch('/familiar/dashboard'),
+          authFetch('/familiar/seguimientos'),
         ])
         if (resDash.status === 'fulfilled' && resDash.value.ok) {
           const dash = await resDash.value.json()

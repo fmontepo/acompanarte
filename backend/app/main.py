@@ -34,6 +34,7 @@ from app.api.auth_router import router as auth_router
 from app.api.contacto_publico_router import router as contacto_publico_router
 from app.api.contacto_publico_router import terapeutas_router as contacto_terapeutas_router
 from app.api.regla_ia_router import router as regla_ia_router
+from app.api.terapeuta_ia_router import router as terapeuta_ia_router
 
 
 # ---------------------------------------------------------------------------
@@ -67,6 +68,7 @@ _ROLES_SEED = [
                 {"id": "ter-int-actividades", "icon": "clipboard", "label": "Actividades"},
             ]},
             {"section": "Herramientas", "items": [
+                {"id": "ter-int-asistente",    "icon": "bot",  "label": "Asistente IA"},
                 {"id": "ter-int-conocimiento", "icon": "book", "label": "Base de conocimiento"},
                 {"id": "alertas",              "icon": "bell", "label": "Alertas", "badge": 0},
             ]},
@@ -101,44 +103,68 @@ _ROLES_SEED = [
 
 
 _REGLAS_SEED = [
-    # ── Reglas positivas ────────────────────────────────────────────────────
-    {"tipo": "positiva", "orden": 1,
+    # ── Reglas positivas — contexto familiar ────────────────────────────────
+    {"tipo": "positiva", "orden": 1, "contexto": "familiar",
      "texto": "Orientar sobre señales tempranas del Trastorno del Espectro Autista (TEA) en niños",
-     "descripcion": "Tema central del asistente"},
-    {"tipo": "positiva", "orden": 2,
+     "descripcion": "Tema central del asistente familiar"},
+    {"tipo": "positiva", "orden": 2, "contexto": "familiar",
      "texto": "Informar sobre estrategias de comunicación y apoyo para familias con niños en el espectro",
      "descripcion": "Apoyo familiar"},
-    {"tipo": "positiva", "orden": 3,
+    {"tipo": "positiva", "orden": 3, "contexto": "familiar",
      "texto": "Explicar qué es el TEA, sus niveles y cómo impacta en el desarrollo infantil",
      "descripcion": "Educación sobre TEA"},
-    {"tipo": "positiva", "orden": 4,
+    {"tipo": "positiva", "orden": 4, "contexto": "familiar",
      "texto": "Orientar sobre cuándo y cómo buscar una evaluación diagnóstica con especialistas",
      "descripcion": "Derivación a profesionales"},
-    {"tipo": "positiva", "orden": 5,
+    {"tipo": "positiva", "orden": 5, "contexto": "familiar",
      "texto": "Describir actividades y ejercicios de estimulación adaptados al nivel TEA, basados en bibliografía validada",
      "descripcion": "Actividades prácticas"},
-    {"tipo": "positiva", "orden": 6,
+    {"tipo": "positiva", "orden": 6, "contexto": "familiar",
      "texto": "Contener emocionalmente a familias y cuidadores, reconociendo el esfuerzo que implica acompañar a un niño con TEA",
      "descripcion": "Apoyo emocional"},
-    # ── Reglas negativas ────────────────────────────────────────────────────
-    {"tipo": "negativa", "orden": 1,
-     "texto": "Emitir diagnósticos ni afirmar que un niño tiene o no tiene TEA u otra condición",
+    # ── Reglas positivas — contexto terapeuta ───────────────────────────────
+    {"tipo": "positiva", "orden": 1, "contexto": "terapeuta",
+     "texto": "Analizar tendencias y patrones en el historial clínico de los pacientes",
+     "descripcion": "Análisis clínico"},
+    {"tipo": "positiva", "orden": 2, "contexto": "terapeuta",
+     "texto": "Sugerir estrategias terapéuticas basadas en la bibliografía validada del sistema",
+     "descripcion": "Recomendaciones basadas en evidencia"},
+    {"tipo": "positiva", "orden": 3, "contexto": "terapeuta",
+     "texto": "Identificar patrones de progreso, estancamiento o regresión en los pacientes",
+     "descripcion": "Seguimiento de evolución"},
+    {"tipo": "positiva", "orden": 4, "contexto": "terapeuta",
+     "texto": "Comparar efectividad de actividades entre pacientes con diagnósticos similares",
+     "descripcion": "Análisis comparativo de actividades"},
+    {"tipo": "positiva", "orden": 5, "contexto": "terapeuta",
+     "texto": "Responder consultas sobre el historial de registros, bienestar y actividades de los pacientes asignados",
+     "descripcion": "Consultas sobre pacientes propios"},
+    # ── Reglas negativas — globales (aplican a familiar Y terapeuta) ─────────
+    {"tipo": "negativa", "orden": 1, "contexto": "global",
+     "texto": "Emitir diagnósticos definitivos ni afirmar que un paciente tiene o no tiene una condición específica",
      "descripcion": "Restricción diagnóstica — no negociable"},
-    {"tipo": "negativa", "orden": 2,
-     "texto": "Recomendar medicamentos, suplementos ni tratamientos específicos",
+    {"tipo": "negativa", "orden": 2, "contexto": "global",
+     "texto": "Recomendar medicamentos, suplementos ni tratamientos farmacológicos específicos",
      "descripcion": "Sin recomendaciones médicas"},
-    {"tipo": "negativa", "orden": 3,
-     "texto": "Responder sobre temas ajenos al neurodesarrollo, TEA, apoyo familiar o desarrollo infantil",
-     "descripcion": "Mantener el foco temático"},
-    {"tipo": "negativa", "orden": 4,
+    {"tipo": "negativa", "orden": 3, "contexto": "global",
      "texto": "Dar información que contradiga o no esté respaldada por la bibliografía validada cargada en el sistema",
      "descripcion": "Integridad de fuentes"},
-    {"tipo": "negativa", "orden": 5,
+    # ── Reglas negativas — contexto familiar ────────────────────────────────
+    {"tipo": "negativa", "orden": 4, "contexto": "familiar",
+     "texto": "Responder sobre temas ajenos al neurodesarrollo, TEA, apoyo familiar o desarrollo infantil",
+     "descripcion": "Mantener el foco temático"},
+    {"tipo": "negativa", "orden": 5, "contexto": "familiar",
      "texto": "Minimizar ni invalidar las preocupaciones de los familiares — siempre tomarlas en serio",
      "descripcion": "Respeto a la familia"},
-    {"tipo": "negativa", "orden": 6,
+    {"tipo": "negativa", "orden": 6, "contexto": "familiar",
      "texto": "Asumir o afirmar el nivel de funcionamiento de un niño sin evaluación profesional",
      "descripcion": "Sin clasificación sin base clínica"},
+    # ── Reglas negativas — contexto terapeuta ───────────────────────────────
+    {"tipo": "negativa", "orden": 4, "contexto": "terapeuta",
+     "texto": "Revelar datos identificatorios de los pacientes — siempre usar referencias anónimas (Paciente 1, Paciente 2)",
+     "descripcion": "Protección de datos clínicos"},
+    {"tipo": "negativa", "orden": 5, "contexto": "terapeuta",
+     "texto": "Responder consultas sobre pacientes que no estén asignados al terapeuta autenticado",
+     "descripcion": "Restricción de acceso por paciente"},
 ]
 
 
@@ -181,11 +207,39 @@ async def _seed_reglas_ia():
             session.add(ReglaIA(
                 tipo=r["tipo"],
                 orden=r["orden"],
+                contexto=r.get("contexto", "global"),
                 texto=r["texto"],
                 descripcion=r.get("descripcion"),
                 activa=True,
             ))
         await session.commit()
+
+
+async def _migrate():
+    """Migraciones incrementales — idempotentes, seguras en cada arranque."""
+    from sqlalchemy import text
+    async with engine.begin() as conn:
+        # v2: campo contexto en reglas_ia (familiar | terapeuta | global)
+        await conn.execute(text(
+            "ALTER TABLE reglas_ia ADD COLUMN IF NOT EXISTS "
+            "contexto VARCHAR(15) NOT NULL DEFAULT 'global'"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_reglas_ia_contexto ON reglas_ia(contexto)"
+        ))
+        # v3: etapas en actividades y progreso
+        await conn.execute(text(
+            "ALTER TABLE actividades_familiar ADD COLUMN IF NOT EXISTS "
+            "total_etapas INTEGER NOT NULL DEFAULT 1"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE progreso_actividad ADD COLUMN IF NOT EXISTS "
+            "es_completada BOOLEAN NOT NULL DEFAULT TRUE"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE progreso_actividad ADD COLUMN IF NOT EXISTS "
+            "etapas_completadas INTEGER"
+        ))
 
 
 @asynccontextmanager
@@ -194,6 +248,8 @@ async def lifespan(app: FastAPI):
     # En producción usar: alembic upgrade head
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # Migraciones incrementales
+    await _migrate()
     # Seed roles iniciales si la tabla está vacía
     await _seed_roles()
     await _seed_reglas_ia()
@@ -259,6 +315,7 @@ app.include_router(dashboard_router,              prefix=PREFIX)
 app.include_router(contacto_publico_router,       prefix=PREFIX)
 app.include_router(contacto_terapeutas_router,    prefix=PREFIX)
 app.include_router(regla_ia_router,               prefix=PREFIX)
+app.include_router(terapeuta_ia_router,           prefix=PREFIX)
 # auth_router ya incluido al inicio — no duplicar
 
 # ---------------------------------------------------------------------------

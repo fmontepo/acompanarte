@@ -22,14 +22,17 @@ const CAT_COLORS = {
 }
 
 function ModalNueva({ onClose, onSave, pacientes }) {
-  const [form, setForm] = useState({ titulo: '', paciente: '', categoria: 'Cognitiva', frecuencia: 'Diaria', descripcion: '' })
+  const [form, setForm] = useState({
+    titulo: '', paciente: '', categoria: 'Cognitiva',
+    frecuencia: 'Diaria', descripcion: '', total_etapas: 1,
+  })
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.titulo.trim() || !form.paciente) return
     setSaving(true)
-    await new Promise(r => setTimeout(r, 500))
+    await new Promise(r => setTimeout(r, 300))
     setSaving(false)
     onSave(form)
   }
@@ -45,11 +48,14 @@ function ModalNueva({ onClose, onSave, pacientes }) {
           <div className="mb">
             <div className="fg">
               <label className="fl">Título *</label>
-              <input className="fi" value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder="Ej: Ejercicio de memoria visual" />
+              <input className="fi" value={form.titulo}
+                onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
+                placeholder="Ej: Ejercicio de memoria visual" />
             </div>
             <div className="fg">
               <label className="fl">Paciente *</label>
-              <select className="fs" value={form.paciente} onChange={e => setForm(f => ({ ...f, paciente: e.target.value }))}>
+              <select className="fs" value={form.paciente}
+                onChange={e => setForm(f => ({ ...f, paciente: e.target.value }))}>
                 <option value="">Seleccioná…</option>
                 {pacientes.map(p => <option key={p.id ?? p} value={p.nombre ?? p}>{p.nombre ?? p}</option>)}
               </select>
@@ -57,19 +63,48 @@ function ModalNueva({ onClose, onSave, pacientes }) {
             <div className="fr2">
               <div className="fg">
                 <label className="fl">Categoría</label>
-                <select className="fs" value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
+                <select className="fs" value={form.categoria}
+                  onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
                   {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="fg">
                 <label className="fl">Frecuencia</label>
-                <select className="fs" value={form.frecuencia} onChange={e => setForm(f => ({ ...f, frecuencia: e.target.value }))}>
-                  {['Diaria', 'Semanal', 'Quincenal', 'Mensual'].map(fr => <option key={fr} value={fr}>{fr}</option>)}
+                <select className="fs" value={form.frecuencia}
+                  onChange={e => setForm(f => ({ ...f, frecuencia: e.target.value }))}>
+                  {['Diaria', 'Semanal', 'Quincenal', 'Mensual'].map(fr =>
+                    <option key={fr} value={fr}>{fr}</option>
+                  )}
                 </select>
               </div>
             </div>
+            {/* Número de etapas */}
             <div className="fg">
-              <label className="fl">Descripción</label>
+              <label className="fl">
+                Número de etapas
+                <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6, fontWeight: 400 }}>
+                  (1 = actividad simple, sin etapas)
+                </span>
+              </label>
+              <div className="flex ic g8">
+                <input
+                  className="fi"
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={form.total_etapas}
+                  onChange={e => setForm(f => ({ ...f, total_etapas: Math.max(1, parseInt(e.target.value) || 1) }))}
+                  style={{ width: 80 }}
+                />
+                {form.total_etapas > 1 && (
+                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                    El familiar podrá registrar avance parcial etapa por etapa
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="fg">
+              <label className="fl">Descripción / Instrucciones</label>
               <textarea className="fi fta" value={form.descripcion} rows={3}
                 onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
                 placeholder="Instrucciones para el familiar o cuidador…" />
@@ -102,14 +137,15 @@ export default function TerIntActividades() {
     function normalizeActividad(a, pacsMap) {
       const pac = pacsMap?.[a.paciente_id]
       return {
-        id:          a.id,
-        titulo:      a.titulo,
-        paciente:    pac?.nombre || a.paciente || 'Paciente',
-        categoria:   a.categoria || 'Bienestar',
-        frecuencia:  a.frecuencia ? (a.frecuencia.charAt(0).toUpperCase() + a.frecuencia.slice(1)) : 'Diaria',
-        completadas: a.completadas ?? 0,
-        total:       a.total ?? 7,
-        activa:      a.activa ?? true,
+        id:           a.id,
+        titulo:       a.titulo,
+        paciente:     pac?.nombre || a.paciente || 'Paciente',
+        categoria:    a.categoria || 'Bienestar',
+        frecuencia:   a.frecuencia ? (a.frecuencia.charAt(0).toUpperCase() + a.frecuencia.slice(1)) : 'Diaria',
+        completadas:  a.completadas ?? 0,
+        total:        a.total_etapas ?? a.total ?? 1,
+        total_etapas: a.total_etapas ?? 1,
+        activa:       a.activa ?? true,
       }
     }
 
@@ -117,8 +153,8 @@ export default function TerIntActividades() {
       setLoading(true)
       try {
         const [resPacs, resActs] = await Promise.allSettled([
-          authFetch('/api/v1/pacientes/'),
-          authFetch('/api/v1/actividades/'),
+          authFetch('/pacientes/'),
+          authFetch('/actividades/'),
         ])
         let pacsMap = {}
         if (resPacs.status === 'fulfilled' && resPacs.value.ok) {
@@ -146,26 +182,28 @@ export default function TerIntActividades() {
     const pac = pacientes.find(p => (p.nombre ?? p) === form.paciente)
 
     try {
-      const res = await authFetch('/api/v1/actividades/', {
+      const res = await authFetch('/actividades/', {
         method: 'POST',
         body: JSON.stringify({
-          paciente_id: pac?.id ?? null,
-          titulo:      form.titulo,
-          descripcion: form.descripcion || null,
-          frecuencia:  FREQ_MAP[form.frecuencia] ?? 'diaria',
+          paciente_id:  pac?.id ?? null,
+          titulo:       form.titulo,
+          descripcion:  form.descripcion || null,
+          frecuencia:   FREQ_MAP[form.frecuencia] ?? 'diaria',
+          total_etapas: form.total_etapas ?? 1,
         }),
       })
       if (res.ok) {
         const data = await res.json()
         setActividades(prev => [{
-          id:          data.id,
-          titulo:      data.titulo,
-          paciente:    form.paciente,
-          categoria:   form.categoria,
-          frecuencia:  form.frecuencia,
-          completadas: 0,
-          total:       7,
-          activa:      true,
+          id:           data.id,
+          titulo:       data.titulo,
+          paciente:     form.paciente,
+          categoria:    form.categoria,
+          frecuencia:   form.frecuencia,
+          completadas:  0,
+          total:        data.total_etapas ?? form.total_etapas ?? 1,
+          total_etapas: data.total_etapas ?? form.total_etapas ?? 1,
+          activa:       true,
         }, ...prev])
         setToast('Actividad creada correctamente.')
       } else {
@@ -173,7 +211,7 @@ export default function TerIntActividades() {
       }
     } catch {
       // Fallback local
-      setActividades(prev => [{ id: Date.now(), ...form, completadas: 0, total: 7, activa: true }, ...prev])
+      setActividades(prev => [{ id: Date.now(), ...form, completadas: 0, total: form.total_etapas ?? 1, activa: true }, ...prev])
       setToast('Guardada localmente (sin conexión).')
     }
     setModal(false)

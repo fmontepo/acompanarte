@@ -70,7 +70,7 @@ export default function FamiliarAsistente() {
 
   // Cargar nombre real del paciente
   useEffect(() => {
-    authFetch('/api/v1/familiar/dashboard')
+    authFetch('/familiar/dashboard')
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.paciente?.nombre) {
@@ -100,7 +100,7 @@ export default function FamiliarAsistente() {
 
     try {
       // Intentar con el backend RAG real
-      const res = await authFetch('/api/v1/ia/chat', {
+      const res = await authFetch('/ia/chat', {
         method: 'POST',
         body: JSON.stringify({ mensaje: texto.trim(), contexto: 'familiar' }),
       })

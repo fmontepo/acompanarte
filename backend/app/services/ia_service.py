@@ -101,15 +101,22 @@ def anonimizar_pii(texto: str) -> str:
 # ---------------------------------------------------------------------------
 # Paso 1b: Carga de reglas de comportamiento activas
 # ---------------------------------------------------------------------------
-async def cargar_reglas(db: AsyncSession) -> dict[str, list[str]]:
+async def cargar_reglas(
+    db: AsyncSession,
+    contexto: str = "familiar",
+) -> dict[str, list[str]]:
     """
     Devuelve las reglas activas agrupadas por tipo.
     { 'positiva': [...textos...], 'negativa': [...textos...] }
+    Incluye reglas del contexto solicitado + las 'global' (aplican a todos).
     Ordenadas por orden ASC para respetar la prioridad definida por el admin.
     """
     result = await db.execute(
         select(ReglaIA)
-        .where(ReglaIA.activa == True)
+        .where(
+            ReglaIA.activa == True,
+            ReglaIA.contexto.in_([contexto, "global"]),
+        )
         .order_by(ReglaIA.tipo, ReglaIA.orden)
         .limit(MAX_REGLAS_POR_TIPO * 2)
     )

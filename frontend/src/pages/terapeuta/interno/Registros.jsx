@@ -131,8 +131,8 @@ export default function TerIntRegistros() {
       try {
         // Cargar pacientes y registros en paralelo
         const [resPacs, resRegs] = await Promise.allSettled([
-          authFetch('/api/v1/pacientes/'),
-          authFetch('/api/v1/registros/'),
+          authFetch('/pacientes/'),
+          authFetch('/registros/'),
         ])
         // Mapa id→paciente para enriquecer registros
         let pacsMap = {}
@@ -167,7 +167,7 @@ export default function TerIntRegistros() {
     const pac = pacientes.find(p => String(p.id) === String(form.paciente_id))
 
     try {
-      const res = await authFetch('/api/v1/registros/', {
+      const res = await authFetch('/registros/', {
         method: 'POST',
         body: JSON.stringify({
           paciente_id:     form.paciente_id,

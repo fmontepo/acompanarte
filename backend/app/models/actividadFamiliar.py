@@ -2,7 +2,7 @@
 # Actividades terapéuticas asignadas por el terapeuta para hacer en casa
 # El familiar registra el progreso en ProgresoActividad
 
-from sqlalchemy import Column, String, Boolean, Text, DateTime, ForeignKey, func, Index
+from sqlalchemy import Column, String, Boolean, Text, DateTime, ForeignKey, func, Index, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -37,6 +37,15 @@ class ActividadFamiliar(Base):
         nullable=False,
         default="diaria",
         comment="diaria | semanal | quincenal | libre",
+    )
+
+    # Número de etapas que tiene la actividad (1 = actividad simple, sin etapas)
+    total_etapas = Column(
+        Integer,
+        nullable=False,
+        default=1,
+        server_default="1",
+        comment="Número de etapas de la actividad. 1 = sin etapas (completa/incompleta).",
     )
 
     activa = Column(Boolean, nullable=False, default=True, index=True)

@@ -28,6 +28,17 @@ class ReglaIA(Base):
         comment="positiva (qué puede hacer) | negativa (qué no puede hacer)",
     )
 
+    # 'familiar' | 'terapeuta' | 'global'
+    # global → se aplica a ambos módulos
+    contexto = Column(
+        String(15),
+        nullable=False,
+        default="global",
+        server_default="global",
+        index=True,
+        comment="familiar | terapeuta | global (aplica a ambos)",
+    )
+
     # Texto de la regla — se inyecta literalmente en el prompt
     texto = Column(
         Text,

@@ -193,7 +193,7 @@ export default function AdminUsuarios() {
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/usuarios/')
+        const res = await authFetch('/usuarios/')
         if (res.ok) {
           const data = await res.json()
           const norm = Array.isArray(data) ? data.map(normalizeUser) : []
@@ -218,7 +218,7 @@ export default function AdminUsuarios() {
   async function handleSave(form) {
     if (modal.modo === 'crear') {
       try {
-        const res = await authFetch('/api/v1/usuarios/', {
+        const res = await authFetch('/usuarios/', {
           method: 'POST',
           body: JSON.stringify({
             nombre:   form.nombre,
@@ -243,7 +243,7 @@ export default function AdminUsuarios() {
       }
     } else {
       try {
-        const res = await authFetch(`/api/v1/usuarios/${modal.usuario.id}`, {
+        const res = await authFetch(`/usuarios/${modal.usuario.id}`, {
           method: 'PUT',
           body: JSON.stringify({
             nombre:   form.nombre,
@@ -275,7 +275,7 @@ export default function AdminUsuarios() {
     // Actualización optimista
     setUsuarios(prev => prev.map(x => x.id === id ? { ...x, activo: !x.activo } : x))
     try {
-      const res = await authFetch(`/api/v1/usuarios/${id}`, {
+      const res = await authFetch(`/usuarios/${id}`, {
         method: 'PUT',
         body: JSON.stringify({ activo: !u.activo }),
       })

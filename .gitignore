@@ -37,3 +37,10 @@ docker-compose\ -\ copia.yml
 nginx/certs/
 nginx/letsencrypt/
 backups/
+
+# Archivos temporales de Word/Office
+~$*
+
+# Outputs de tests
+*.txt
+pytest_output.txt

@@ -2,7 +2,7 @@
 // Gestión de reglas de comportamiento del Asistente IA
 // Reglas positivas → qué puede responder
 // Reglas negativas → qué NO puede responder
-// Las reglas activas se inyectan en el prompt de cada consulta al modelo.
+// Contexto: familiar | terapeuta | global (aplican a todos)
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
@@ -39,36 +39,53 @@ const IcoRefresh = () => (
   </svg>
 )
 
-// ─── Colores por tipo ─────────────────────────────────────────────────────
+// ─── Metadatos por tipo ───────────────────────────────────────────────────
 const TIPO_META = {
   positiva: {
-    label:      'Reglas positivas',
-    sublabel:   'Lo que el asistente PUEDE y DEBE responder',
-    accentColor:'var(--teal)',
-    bgColor:    'rgba(56,161,105,0.06)',
-    borderColor:'rgba(56,161,105,0.25)',
-    chipClass:  'ch-teal',
-    dotColor:   'var(--teal)',
-    icon:       '✓',
+    label:       'Reglas positivas',
+    sublabel:    'Lo que el asistente PUEDE y DEBE responder',
+    accentColor: 'var(--teal)',
+    bgColor:     'rgba(56,161,105,0.06)',
+    borderColor: 'rgba(56,161,105,0.25)',
+    icon:        '✓',
   },
   negativa: {
-    label:      'Reglas negativas',
-    sublabel:   'Lo que el asistente NO DEBE responder ni hacer',
-    accentColor:'var(--red)',
-    bgColor:    'rgba(163,45,45,0.05)',
-    borderColor:'rgba(163,45,45,0.2)',
-    chipClass:  'ch-rd',
-    dotColor:   'var(--red)',
-    icon:       '✗',
+    label:       'Reglas negativas',
+    sublabel:    'Lo que el asistente NO DEBE responder ni hacer',
+    accentColor: 'var(--red)',
+    bgColor:     'rgba(163,45,45,0.05)',
+    borderColor: 'rgba(163,45,45,0.2)',
+    icon:        '✗',
   },
 }
 
+// ─── Metadatos por contexto ───────────────────────────────────────────────
+const CONTEXTO_META = {
+  familiar:   { label: 'Familiar',   color: '#3b82f6', bg: 'rgba(59,130,246,0.1)'  },
+  terapeuta:  { label: 'Terapeuta',  color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)'  },
+  global:     { label: 'Global',     color: '#64748b', bg: 'rgba(100,116,139,0.1)' },
+}
+
+function ChipContexto({ contexto }) {
+  const m = CONTEXTO_META[contexto] || CONTEXTO_META.global
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20,
+      background: m.bg, color: m.color, letterSpacing: '0.02em',
+      flexShrink: 0,
+    }}>
+      {m.label}
+    </span>
+  )
+}
+
 // ─── Formulario de nueva regla ────────────────────────────────────────────
-function FormNuevaRegla({ tipo, onCreada, onCancelar }) {
+function FormNuevaRegla({ tipo, contextoFiltro, onCreada, onCancelar }) {
   const { authFetch }   = useAuth()
   const meta            = TIPO_META[tipo]
   const [texto,       setTexto]       = useState('')
   const [descripcion, setDescripcion] = useState('')
+  const [contexto,    setContexto]    = useState(contextoFiltro !== 'todos' ? contextoFiltro : 'global')
   const [guardando,   setGuardando]   = useState(false)
   const [error,       setError]       = useState('')
 
@@ -80,7 +97,12 @@ function FormNuevaRegla({ tipo, onCreada, onCancelar }) {
       const res = await authFetch('/admin/reglas-ia', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tipo, texto: texto.trim(), descripcion: descripcion.trim() || null }),
+        body:    JSON.stringify({
+          tipo,
+          contexto,
+          texto:      texto.trim(),
+          descripcion: descripcion.trim() || null,
+        }),
       })
       if (res.ok) {
         const nueva = await res.json()
@@ -106,6 +128,31 @@ function FormNuevaRegla({ tipo, onCreada, onCancelar }) {
       <div style={{ fontSize: 12, fontWeight: 600, color: meta.accentColor, marginBottom: 8 }}>
         Nueva regla {tipo}
       </div>
+
+      {/* Selector de contexto */}
+      <div style={{ marginBottom: 8 }}>
+        <label style={{ fontSize: 11, color: 'var(--text3)', display: 'block', marginBottom: 4 }}>
+          Módulo donde aplica
+        </label>
+        <div className="flex ic g6">
+          {Object.entries(CONTEXTO_META).map(([key, m]) => (
+            <button
+              key={key}
+              onClick={() => setContexto(key)}
+              style={{
+                fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
+                border: `1.5px solid ${contexto === key ? m.color : 'var(--border)'}`,
+                background: contexto === key ? m.bg : 'transparent',
+                color: contexto === key ? m.color : 'var(--text3)',
+                cursor: 'pointer',
+              }}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <textarea
         className="fi"
         value={texto}
@@ -145,6 +192,7 @@ function ItemRegla({ regla, onActualizada, onEliminada }) {
   const [editando,    setEditando]    = useState(false)
   const [textoEdit,   setTextoEdit]   = useState(regla.texto)
   const [descEdit,    setDescEdit]    = useState(regla.descripcion ?? '')
+  const [ctxEdit,     setCtxEdit]     = useState(regla.contexto || 'global')
   const [guardando,   setGuardando]   = useState(false)
   const [confirmDel,  setConfirmDel]  = useState(false)
 
@@ -155,7 +203,11 @@ function ItemRegla({ regla, onActualizada, onEliminada }) {
       const res = await authFetch(`/admin/reglas-ia/${regla.id}`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ texto: textoEdit.trim(), descripcion: descEdit.trim() || null }),
+        body:    JSON.stringify({
+          texto:      textoEdit.trim(),
+          descripcion: descEdit.trim() || null,
+          contexto:   ctxEdit,
+        }),
       })
       if (res.ok) { onActualizada(await res.json()); setEditando(false) }
     } finally {
@@ -188,6 +240,29 @@ function ItemRegla({ regla, onActualizada, onEliminada }) {
     }}>
       {editando ? (
         <div>
+          {/* Selector de contexto en edición */}
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ fontSize: 11, color: 'var(--text3)', display: 'block', marginBottom: 4 }}>
+              Módulo donde aplica
+            </label>
+            <div className="flex ic g6">
+              {Object.entries(CONTEXTO_META).map(([key, m]) => (
+                <button
+                  key={key}
+                  onClick={() => setCtxEdit(key)}
+                  style={{
+                    fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
+                    border: `1.5px solid ${ctxEdit === key ? m.color : 'var(--border)'}`,
+                    background: ctxEdit === key ? m.bg : 'transparent',
+                    color: ctxEdit === key ? m.color : 'var(--text3)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <textarea
             className="fi"
             value={textoEdit}
@@ -208,7 +283,12 @@ function ItemRegla({ regla, onActualizada, onEliminada }) {
             <button className="btn btn-p btn-xs" onClick={guardarEdicion} disabled={guardando}>
               <IcoCheck /> {guardando ? 'Guardando…' : 'Guardar'}
             </button>
-            <button className="btn btn-g btn-xs" onClick={() => { setEditando(false); setTextoEdit(regla.texto); setDescEdit(regla.descripcion ?? '') }}>
+            <button className="btn btn-g btn-xs" onClick={() => {
+              setEditando(false)
+              setTextoEdit(regla.texto)
+              setDescEdit(regla.descripcion ?? '')
+              setCtxEdit(regla.contexto || 'global')
+            }}>
               <IcoX /> Cancelar
             </button>
           </div>
@@ -224,6 +304,9 @@ function ItemRegla({ regla, onActualizada, onEliminada }) {
               {meta.icon}
             </span>
             <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <ChipContexto contexto={regla.contexto || 'global'} />
+              </div>
               <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text)' }}>
                 {regla.texto}
               </div>
@@ -235,7 +318,6 @@ function ItemRegla({ regla, onActualizada, onEliminada }) {
             </div>
             {/* Acciones */}
             <div className="flex ic g4" style={{ flexShrink: 0 }}>
-              {/* Toggle activa */}
               <button
                 title={regla.activa ? 'Desactivar' : 'Activar'}
                 className={`btn btn-xs ${regla.activa ? 'btn-s' : 'btn-g'}`}
@@ -249,7 +331,11 @@ function ItemRegla({ regla, onActualizada, onEliminada }) {
               </button>
               {confirmDel ? (
                 <>
-                  <button className="btn btn-xs" style={{ background: 'var(--red)', color: '#fff', fontSize: 11 }} onClick={eliminar}>
+                  <button
+                    className="btn btn-xs"
+                    style={{ background: 'var(--red)', color: '#fff', fontSize: 11 }}
+                    onClick={eliminar}
+                  >
                     Confirmar
                   </button>
                   <button className="btn btn-g btn-xs" onClick={() => setConfirmDel(false)}>
@@ -270,10 +356,10 @@ function ItemRegla({ regla, onActualizada, onEliminada }) {
 }
 
 // ─── Panel por tipo ───────────────────────────────────────────────────────
-function PanelTipo({ tipo, reglas, onCreada, onActualizada, onEliminada }) {
+function PanelTipo({ tipo, reglas, contextoFiltro, onCreada, onActualizada, onEliminada }) {
   const meta            = TIPO_META[tipo]
   const [agregando, setAgregando] = useState(false)
-  const activas   = reglas.filter(r => r.activa).length
+  const activas = reglas.filter(r => r.activa).length
 
   return (
     <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -308,10 +394,8 @@ function PanelTipo({ tipo, reglas, onCreada, onActualizada, onEliminada }) {
 
       {/* Lista de reglas */}
       {reglas.length === 0 && !agregando && (
-        <div style={{
-          padding: '20px 0', textAlign: 'center', color: 'var(--text3)', fontSize: 13,
-        }}>
-          No hay reglas {tipo === 'positiva' ? 'positivas' : 'negativas'} aún.
+        <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
+          No hay reglas {tipo === 'positiva' ? 'positivas' : 'negativas'} para este módulo.
           <br />
           <span style={{ fontSize: 12 }}>
             Agregá la primera para guiar al asistente.
@@ -332,6 +416,7 @@ function PanelTipo({ tipo, reglas, onCreada, onActualizada, onEliminada }) {
         {agregando && (
           <FormNuevaRegla
             tipo={tipo}
+            contextoFiltro={contextoFiltro}
             onCreada={r => { onCreada(r); setAgregando(false) }}
             onCancelar={() => setAgregando(false)}
           />
@@ -343,10 +428,18 @@ function PanelTipo({ tipo, reglas, onCreada, onActualizada, onEliminada }) {
 }
 
 // ─── Página principal ─────────────────────────────────────────────────────
+const TABS = [
+  { key: 'todos',    label: 'Todos los módulos' },
+  { key: 'familiar', label: 'Módulo Familiar' },
+  { key: 'terapeuta',label: 'Módulo Terapeuta' },
+  { key: 'global',   label: 'Global (ambos)' },
+]
+
 export default function AdminReglasIA() {
   const { authFetch } = useAuth()
-  const [reglas,  setReglas]  = useState([])
-  const [loading, setLoading] = useState(true)
+  const [reglas,      setReglas]      = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [tabActiva,   setTabActiva]   = useState('todos')
 
   async function cargar() {
     setLoading(true)
@@ -363,18 +456,23 @@ export default function AdminReglasIA() {
   function handleCreada(nueva) {
     setReglas(prev => [...prev, nueva])
   }
-
   function handleActualizada(updated) {
     setReglas(prev => prev.map(r => r.id === updated.id ? updated : r))
   }
-
   function handleEliminada(id) {
     setReglas(prev => prev.filter(r => r.id !== id))
   }
 
-  const positivas = reglas.filter(r => r.tipo === 'positiva').sort((a, b) => a.orden - b.orden)
-  const negativas = reglas.filter(r => r.tipo === 'negativa').sort((a, b) => a.orden - b.orden)
+  // Normaliza null/undefined → 'global' para comparaciones
+  const ctxOf = r => r.contexto || 'global'
 
+  // Filtrar por tab
+  const reglasFiltradas = tabActiva === 'todos'
+    ? reglas
+    : reglas.filter(r => ctxOf(r) === tabActiva)
+
+  const positivas = reglasFiltradas.filter(r => r.tipo === 'positiva').sort((a, b) => a.orden - b.orden)
+  const negativas = reglasFiltradas.filter(r => r.tipo === 'negativa').sort((a, b) => a.orden - b.orden)
   const totalActivas = reglas.filter(r => r.activa).length
 
   return (
@@ -385,7 +483,7 @@ export default function AdminReglasIA() {
         <div>
           <div style={{ fontSize: 20, fontWeight: 700 }}>Reglas del Asistente IA</div>
           <div className="ts tm" style={{ marginTop: 3 }}>
-            Las reglas activas se inyectan en cada prompt enviado al modelo ·{' '}
+            Las reglas activas se inyectan en cada prompt según el módulo ·{' '}
             <strong>{totalActivas}</strong> regla{totalActivas !== 1 ? 's' : ''} activa{totalActivas !== 1 ? 's' : ''}
           </div>
         </div>
@@ -394,19 +492,55 @@ export default function AdminReglasIA() {
         </button>
       </div>
 
-      {/* ── Cómo funciona ───────────────────────────────────────── */}
+      {/* ── Info ────────────────────────────────────────────────── */}
       <div style={{
         background: 'var(--blue2)', border: '1px solid var(--blue)',
         borderRadius: 10, padding: '12px 16px', marginBottom: 20,
         fontSize: 13, color: 'var(--text)', lineHeight: 1.6,
       }}>
-        <strong>¿Cómo funciona?</strong> Cada vez que alguien hace una consulta al asistente,
-        las reglas activas se incluyen en el prompt enviado al modelo de lenguaje.
+        <strong>¿Cómo funciona?</strong> Las reglas se aplican por módulo: las del módulo{' '}
+        <span style={{ color: '#3b82f6', fontWeight: 600 }}>Familiar</span> guían al asistente
+        para familias, las del módulo{' '}
+        <span style={{ color: '#8b5cf6', fontWeight: 600 }}>Terapeuta</span> al asistente
+        clínico, y las{' '}
+        <span style={{ color: '#64748b', fontWeight: 600 }}>Globales</span> aplican a ambos.
         Las <span style={{ color: 'var(--teal)', fontWeight: 600 }}>reglas positivas</span> definen
-        sobre qué temas puede orientar. Las{' '}
-        <span style={{ color: 'var(--red)', fontWeight: 600 }}>reglas negativas</span> establecen
-        restricciones y límites de seguridad. Podés activar, desactivar o editar reglas en cualquier
-        momento sin reiniciar el sistema.
+        sobre qué puede orientar. Las{' '}
+        <span style={{ color: 'var(--red)', fontWeight: 600 }}>negativas</span> establecen restricciones.
+      </div>
+
+      {/* ── Tabs por contexto ───────────────────────────────────── */}
+      <div className="flex ic g8" style={{ marginBottom: 20 }}>
+        {TABS.map(tab => {
+          const count = tab.key === 'todos'
+            ? reglas.length
+            : reglas.filter(r => ctxOf(r) === tab.key).length
+          const activo = tabActiva === tab.key
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setTabActiva(tab.key)}
+              style={{
+                fontSize: 12, fontWeight: activo ? 700 : 500,
+                padding: '5px 14px', borderRadius: 20,
+                border: `1.5px solid ${activo ? 'var(--teal)' : 'var(--border)'}`,
+                background: activo ? 'rgba(56,161,105,0.08)' : 'transparent',
+                color: activo ? 'var(--teal)' : 'var(--text3)',
+                cursor: 'pointer',
+              }}
+            >
+              {tab.label}
+              <span style={{
+                marginLeft: 6, fontSize: 10, fontWeight: 700,
+                background: activo ? 'var(--teal)' : 'var(--border)',
+                color: activo ? '#fff' : 'var(--text3)',
+                borderRadius: 20, padding: '1px 6px',
+              }}>
+                {count}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {loading ? (
@@ -418,6 +552,7 @@ export default function AdminReglasIA() {
           <PanelTipo
             tipo="positiva"
             reglas={positivas}
+            contextoFiltro={tabActiva}
             onCreada={handleCreada}
             onActualizada={handleActualizada}
             onEliminada={handleEliminada}
@@ -425,6 +560,7 @@ export default function AdminReglasIA() {
           <PanelTipo
             tipo="negativa"
             reglas={negativas}
+            contextoFiltro={tabActiva}
             onCreada={handleCreada}
             onActualizada={handleActualizada}
             onEliminada={handleEliminada}

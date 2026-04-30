@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 
-const MOCK_PACIENTES = [
-  { id: 1, nombre: 'Roberto Méndez',   edad: 68, diagnostico: 'Deterioro cognitivo leve', ultima_visita: 'hace 5 días', proxima: 'Jue 10:00', av: 'RM', avClass: 'av-tl', registros: 12 },
-  { id: 2, nombre: 'Elena Fernández',  edad: 72, diagnostico: 'Demencia vascular leve',    ultima_visita: 'hace 8 días', proxima: 'Vie 14:30', av: 'EF', avClass: 'av-pp', registros: 7  },
-]
-
-const MOCK_AGENDA = [
-  { hora: '10:00', paciente: 'Roberto Méndez',  tipo: 'Evaluación',   av: 'RM', avClass: 'av-tl' },
-  { hora: '14:30', paciente: 'Elena Fernández', tipo: 'Seguimiento',  av: 'EF', avClass: 'av-pp' },
-]
+function formatFechaRelativa(iso) {
+  if (!iso) return 'Sin registros'
+  const fecha = new Date(iso)
+  const hoy   = new Date()
+  const diff  = Math.floor((hoy - fecha) / 86400000)
+  if (diff === 0) return 'Hoy'
+  if (diff === 1) return 'Ayer'
+  if (diff < 7)  return `hace ${diff} días`
+  return fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+}
 
 export default function TerExtDashboard() {
   const { user, authFetch } = useAuth()
@@ -23,13 +24,13 @@ export default function TerExtDashboard() {
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/terapeuta/externo/dashboard')
+        const res = await authFetch('/terapeuta/externo/dashboard')
         if (res.ok) {
           const data = await res.json()
           setPacientes(data.pacientes ?? [])
           setAgenda(data.agenda ?? [])
         } else { setPacientes([]); setAgenda([]) }
-      } catch { setPacientes(MOCK_PACIENTES); setAgenda(MOCK_AGENDA) }  // error de red → mock
+      } catch { setPacientes([]); setAgenda([]) }
       finally { setLoading(false) }
     }
     cargar()
@@ -73,15 +74,15 @@ export default function TerExtDashboard() {
                   <div className={`av ${p.avClass}`} style={{ width: 40, height: 40, fontSize: 14 }}>{p.av}</div>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{p.nombre}</div>
-                    <div className="txs tm">{p.edad} años · {p.diagnostico}</div>
+                    <div className="txs tm">{p.edad != null ? `${p.edad} años · ` : ''}{p.diagnostico}</div>
                     <div className="txs tm" style={{ marginTop: 2 }}>
-                      {p.registros} registros míos · Última visita: {p.ultima_visita}
+                      {p.registros ?? 0} registros míos · Última visita: {formatFechaRelativa(p.ultima_visita)}
                     </div>
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div className="txs tm">Próxima visita</div>
-                  <div className="ts f5" style={{ color: 'var(--teal)' }}>{p.proxima}</div>
+                  <div className="txs tm">Última visita</div>
+                  <div className="ts f5">{formatFechaRelativa(p.ultima_visita)}</div>
                 </div>
               </div>
             </div>

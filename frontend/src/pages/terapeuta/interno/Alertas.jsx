@@ -54,7 +54,7 @@ export default function TerIntAlertas() {
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/alertas/')
+        const res = await authFetch('/alertas/')
         if (res.ok) {
           const data = await res.json()
           const norm = Array.isArray(data) ? data.map(normalizeAlerta) : []
@@ -70,7 +70,7 @@ export default function TerIntAlertas() {
     // Actualización optimista
     setAlertas(prev => prev.map(a => a.id === id ? { ...a, resuelta: true } : a))
     try {
-      const res = await authFetch(`/api/v1/alertas/${id}/resolver`, { method: 'POST' })
+      const res = await authFetch(`/alertas/${id}/resolver`, { method: 'POST' })
       if (res.ok) {
         setToast('Alerta marcada como resuelta.')
       } else {

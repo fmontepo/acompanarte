@@ -97,6 +97,7 @@ const SCREEN_TO_PATH = {
   'ter-int-dash':           '/terapeuta/interno/dashboard',
   'ter-int-registros':      '/terapeuta/interno/registros',
   'ter-int-actividades':    '/terapeuta/interno/actividades',
+  'ter-int-asistente':      '/terapeuta/interno/asistente',
   'ter-int-conocimiento':   '/terapeuta/interno/conocimiento',
   // ter-ext
   'ter-ext-dash':           '/terapeuta/externo/dashboard',

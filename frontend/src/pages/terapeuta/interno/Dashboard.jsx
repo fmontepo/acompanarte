@@ -2,19 +2,18 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 
-const MOCK_PACIENTES = [
-  { id: 1, nombre: 'Roberto Méndez',    edad: 68, diagnostico: 'Deterioro cognitivo leve',    bienestar: 72, ultima_sesion: 'Hoy',       proxima: 'Mañana 10:00',  av: 'RM', avClass: 'av-tl' },
-  { id: 2, nombre: 'Carmen Villalba',   edad: 74, diagnostico: 'Alzheimer estadio temprano',  bienestar: 55, ultima_sesion: 'Ayer',      proxima: 'Vie 11:30',     av: 'CV', avClass: 'av-pp' },
-  { id: 3, nombre: 'Héctor Rodríguez',  edad: 71, diagnostico: 'Parkinson + deterioro leve',  bienestar: 81, ultima_sesion: 'Lun',       proxima: 'Jue 09:00',     av: 'HR', avClass: 'av-am' },
-  { id: 4, nombre: 'Sofía Blanco',      edad: 66, diagnostico: 'Depresión + ansiedad',        bienestar: 63, ultima_sesion: 'hace 3 d.', proxima: 'Vie 15:00',     av: 'SB', avClass: 'av-bu' },
-]
-const MOCK_ALERTAS = [
-  { id: 1, paciente: 'Carmen Villalba',  texto: 'Sin actividades completadas en 3 días.',          tipo: 'rd' },
-  { id: 2, paciente: 'Sofía Blanco',     texto: 'Familiar reportó episodio de agitación vespertina.', tipo: 'am' },
-  { id: 3, paciente: 'Roberto Méndez',   texto: 'Consentimiento de seguimiento próximo a vencer.',  tipo: 'am' },
-]
 
 function BioBarra({ pct }) {
+  if (pct == null) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+        <div className="pbar" style={{ flex: 1, height: 5 }}>
+          <div className="pf" style={{ width: '0%' }} />
+        </div>
+        <span className="txs" style={{ color: 'var(--text3)', width: 50, fontSize: 10 }}>sin datos</span>
+      </div>
+    )
+  }
   const color = pct >= 70 ? 'var(--teal)' : pct >= 50 ? 'var(--amber)' : 'var(--red)'
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
@@ -38,14 +37,14 @@ export default function TerIntDashboard() {
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/terapeuta/dashboard')
+        const res = await authFetch('/terapeuta/dashboard')
         if (res.ok) {
           const data = await res.json()
           setPacientes(data.pacientes ?? [])
           setAlertas(data.alertas ?? [])
           setKpis(data.kpis ?? { sesiones: 0, alertas: 0, actividades: 0 })
         } else { setPacientes([]); setAlertas([]); setKpis({ sesiones: 0, alertas: 0, actividades: 0 }) }
-      } catch { setPacientes(MOCK_PACIENTES); setAlertas(MOCK_ALERTAS); setKpis({ sesiones: 8, alertas: MOCK_ALERTAS.length, actividades: 17 }) }  // error de red → mock
+      } catch { setPacientes([]); setAlertas([]); setKpis({ sesiones: 0, alertas: 0, actividades: 0 }) }
       finally { setLoading(false) }
     }
     cargar()
@@ -97,15 +96,13 @@ export default function TerIntDashboard() {
                       <div className={`av ${p.avClass}`} style={{ width: 38, height: 38, fontSize: 13 }}>{p.av}</div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600 }}>{p.nombre}</div>
-                        <div className="txs tm">{p.edad} años · {p.diagnostico}</div>
+                        <div className="txs tm">{p.edad != null ? `${p.edad} años · ` : ''}{p.diagnostico}</div>
                         <BioBarra pct={p.bienestar} />
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <div className="txs tm">Última sesión</div>
-                      <div className="ts f5">{p.ultima_sesion}</div>
-                      <div className="txs tm" style={{ marginTop: 4 }}>Próxima</div>
-                      <div className="txs" style={{ color: 'var(--teal)', fontWeight: 500 }}>{p.proxima}</div>
+                      <div className="ts f5">{p.ultima_sesion ?? 'Sin registros'}</div>
                     </div>
                   </div>
                 </div>

@@ -42,41 +42,22 @@ const IcoStar = () => (
   </svg>
 )
 
-// ─── Mock data ───────────────────────────────────────────────────────────
-const MOCK_PACIENTE = {
-  nombre: 'Roberto',
-  apellido: 'Méndez',
-  edad: 68,
-  diagnostico: 'Deterioro cognitivo leve',
-  equipo: [
-    { nombre: 'Dr. Luis Herrera', rol: 'Terapeuta principal', av: 'LH', avClass: 'av-pp' },
-    { nombre: 'Lic. Patricia Ruiz', rol: 'Terapeuta cognitiva', av: 'PR', avClass: 'av-tl' },
-  ],
-  bienestar: 72, // porcentaje
-  bienestar_label: 'Estable',
-  ultimo_registro: 'Hoy, 09:15',
-}
-
-const MOCK_ACTIVIDADES = [
-  { id: 1, titulo: 'Ejercicio de respiración',       completada: true,  hora: '08:30', color: 'var(--teal)' },
-  { id: 2, titulo: 'Lectura guiada — 15 minutos',    completada: true,  hora: '10:00', color: 'var(--blue)' },
-  { id: 3, titulo: 'Caminata matutina',               completada: false, hora: '11:30', color: 'var(--purple)' },
-  { id: 4, titulo: 'Ejercicio de memoria visual',    completada: false, hora: '16:00', color: 'var(--amber)' },
-]
-
-const MOCK_SEGUIMIENTOS = [
-  { id: 1, fecha: 'Hoy, 09:15',        autor: 'Dr. Herrera',  texto: 'Buena respuesta a los ejercicios matutinos. Estado de ánimo positivo.', tipo: 'positivo' },
-  { id: 2, fecha: 'Ayer, 18:00',       autor: 'Lic. Ruiz',    texto: 'Sesión de terapia cognitiva completada. Se notan mejoras en reconocimiento de caras.', tipo: 'positivo' },
-  { id: 3, fecha: 'Lun, 10:30',        autor: 'Dr. Herrera',  texto: 'Episodio de desorientación breve durante la mañana. Recomendamos mantener rutina.', tipo: 'neutral' },
-]
-
-const MOCK_ALERTAS = [
-  { id: 1, texto: 'Recordá renovar el consentimiento de seguimiento (vence en 5 días).', tipo: 'am' },
-  { id: 2, texto: 'Nueva actividad asignada por el equipo terapéutico para esta semana.', tipo: 'tl' },
-]
-
 // ─── Sub-componentes ─────────────────────────────────────────────────────
 function BienestarMeter({ pct, label }) {
+  if (pct == null) {
+    return (
+      <div>
+        <div className="flex ic jb" style={{ marginBottom: 6 }}>
+          <span className="ts tm">Índice de bienestar</span>
+          <span style={{ fontSize: 13, color: 'var(--text3)' }}>Sin datos aún</span>
+        </div>
+        <div className="pbar" style={{ height: 8 }}>
+          <div className="pf" style={{ width: '0%' }} />
+        </div>
+        <div className="txs" style={{ marginTop: 5, color: 'var(--text3)' }}>● Se calculará con los primeros registros</div>
+      </div>
+    )
+  }
   const color = pct >= 70 ? 'var(--teal)' : pct >= 40 ? 'var(--amber)' : 'var(--red)'
   return (
     <div>
@@ -90,6 +71,17 @@ function BienestarMeter({ pct, label }) {
       <div className="txs" style={{ marginTop: 5, color }}>● {label}</div>
     </div>
   )
+}
+
+function formatFechaRelativa(iso) {
+  if (!iso) return 'Sin registros'
+  const d = new Date(iso)
+  const hoy = new Date()
+  const diffDias = Math.floor((hoy - d) / 86400000)
+  if (diffDias === 0) return 'Hoy'
+  if (diffDias === 1) return 'Ayer'
+  if (diffDias < 7) return `Hace ${diffDias} días`
+  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────
@@ -107,7 +99,7 @@ export default function FamiliarDashboard() {
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/familiar/dashboard')
+        const res = await authFetch('/familiar/dashboard')
         if (res.ok) {
           const data = await res.json()
 
@@ -130,9 +122,7 @@ export default function FamiliarDashboard() {
           setPaciente(null); setActividades([]); setSeguimientos([]); setAlertas([])
         }
       } catch {
-        // Error de red: mostrar mock para que la UI no quede en blanco
-        setPaciente(MOCK_PACIENTE); setActividades(MOCK_ACTIVIDADES)
-        setSeguimientos(MOCK_SEGUIMIENTOS); setAlertas(MOCK_ALERTAS)
+        setPaciente(null); setActividades([]); setSeguimientos([]); setAlertas([])
       } finally {
         setLoading(false)
       }
@@ -232,13 +222,13 @@ export default function FamiliarDashboard() {
               <div className={`av ${t.avClass}`} style={{ width: 28, height: 28, fontSize: 10 }}>{t.av}</div>
               <div>
                 <div className="ts f5">{t.nombre}</div>
-                <div className="txs tm">{t.rol}</div>
+                <div className="txs tm">{t.profesion || t.rol || ''}</div>
               </div>
             </div>
           ))}
 
           <div className="divider" />
-          <div className="txs tm">Último registro: <span className="f5" style={{ color: 'var(--text)' }}>{paciente.ultimo_registro}</span></div>
+          <div className="txs tm">Último registro: <span className="f5" style={{ color: 'var(--text)' }}>{formatFechaRelativa(paciente.ultimo_registro)}</span></div>
         </div>
 
         {/* Actividades del día */}
@@ -284,7 +274,7 @@ export default function FamiliarDashboard() {
                   {act.titulo}
                 </div>
               </div>
-              <div className="txs tm">{act.hora}</div>
+              <div className="txs tm">{act.frecuencia || ''}</div>
             </div>
           ))}
         </div>

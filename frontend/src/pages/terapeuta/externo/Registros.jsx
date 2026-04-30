@@ -107,8 +107,8 @@ export default function TerExtRegistros() {
       setLoading(true)
       try {
         const [resPacs, resRegs] = await Promise.allSettled([
-          authFetch('/api/v1/pacientes/'),
-          authFetch('/api/v1/registros/'),
+          authFetch('/pacientes/'),
+          authFetch('/registros/'),
         ])
         let pacsMap = {}
         if (resPacs.status === 'fulfilled' && resPacs.value.ok) {
@@ -145,7 +145,7 @@ export default function TerExtRegistros() {
     const pac = pacientes.find(p => (p.nombre ?? p) === nombre)
 
     try {
-      const res = await authFetch('/api/v1/registros/', {
+      const res = await authFetch('/registros/', {
         method: 'POST',
         body: JSON.stringify({
           paciente_id:    pac?.id ?? null,

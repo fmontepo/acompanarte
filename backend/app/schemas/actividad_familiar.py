@@ -13,6 +13,9 @@ class ActividadFamiliarCreate(BaseModel):
     descripcion: Optional[str] = None
     objetivo: Optional[str] = None
     frecuencia: str = "diaria"
+    # Número de etapas (pasos) que tiene la actividad.
+    # 1 = actividad simple (sin etapas), se marca completa/incompleta.
+    total_etapas: int = 1
 
     @field_validator("frecuencia")
     @classmethod
@@ -28,12 +31,20 @@ class ActividadFamiliarCreate(BaseModel):
             raise ValueError("El título no puede estar vacío")
         return v.strip()
 
+    @field_validator("total_etapas")
+    @classmethod
+    def validar_etapas(cls, v):
+        if v < 1:
+            raise ValueError("total_etapas debe ser al menos 1")
+        return v
+
 
 class ActividadFamiliarUpdate(BaseModel):
     titulo: Optional[str] = None
     descripcion: Optional[str] = None
     objetivo: Optional[str] = None
     frecuencia: Optional[str] = None
+    total_etapas: Optional[int] = None
     activa: Optional[bool] = None
 
 
@@ -45,6 +56,7 @@ class ActividadFamiliarRead(BaseModel):
     descripcion: Optional[str] = None
     objetivo: Optional[str] = None
     frecuencia: str
+    total_etapas: int = 1
     activa: bool
     creado_en: datetime
     actualizado_en: datetime

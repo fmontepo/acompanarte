@@ -17,6 +17,7 @@ import TerIntRegistros    from '../pages/terapeuta/interno/Registros'
 import TerIntActividades  from '../pages/terapeuta/interno/Actividades'
 import TerIntConocimiento from '../pages/terapeuta/interno/Conocimiento'
 import TerIntAlertas      from '../pages/terapeuta/interno/Alertas'
+import TerIntAsistente    from '../pages/terapeuta/interno/Asistente'
 
 // Terapeuta externo
 import TerExtDash      from '../pages/terapeuta/externo/Dashboard'
@@ -113,6 +114,7 @@ export default function AppRouter() {
             <Route path="dashboard"    element={<TerIntDash />} />
             <Route path="registros"    element={<TerIntRegistros />} />
             <Route path="actividades"  element={<TerIntActividades />} />
+            <Route path="asistente"    element={<TerIntAsistente />} />
             <Route path="conocimiento" element={<TerIntConocimiento />} />
             <Route path="alertas"      element={<TerIntAlertas />} />
           </Route>

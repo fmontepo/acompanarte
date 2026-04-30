@@ -31,7 +31,7 @@ export default function FamiliarAlertas() {
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/familiar/alertas')
+        const res = await authFetch('/familiar/alertas')
         if (res.ok) {
           const data = await res.json()
           setAlertas(Array.isArray(data) ? data : [])

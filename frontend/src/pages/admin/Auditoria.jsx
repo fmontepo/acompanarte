@@ -121,7 +121,7 @@ export default function AdminAuditoria() {
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/auditoria/?limit=100')
+        const res = await authFetch('/auditoria/?limit=100')
         if (res.ok) {
           const data = await res.json()
           const norm = Array.isArray(data) ? data.map(normalizeLog) : []

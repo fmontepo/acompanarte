@@ -2,7 +2,7 @@
 # Registro de progreso de una actividad terapéutica realizada en casa
 # El familiar completa este registro — el terapeuta lo revisa
 
-from sqlalchemy import Column, DateTime, Text, ForeignKey, Integer, func, Index
+from sqlalchemy import Column, DateTime, Text, ForeignKey, Integer, Boolean, func, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 import uuid
@@ -32,6 +32,24 @@ class ProgresoActividad(Base):
     # multimedia: lista de rutas a archivos subidos (fotos, videos)
     # Estructura: [{"tipo": "imagen", "url": "...", "nombre": "..."}]
     multimedia = Column(JSONB, nullable=True, comment="Archivos adjuntos al progreso")
+
+    # ── Seguimiento de etapas ────────────────────────────────────────────────
+    # True  = la actividad se completó en su totalidad
+    # False = se avanzó parcialmente (solo algunas etapas)
+    es_completada = Column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="true",
+        comment="True si se completaron todas las etapas; False si fue parcial",
+    )
+    # Cuántas etapas se hicieron en esta sesión.
+    # NULL cuando es_completada=True (se asume total_etapas de la actividad).
+    etapas_completadas = Column(
+        Integer,
+        nullable=True,
+        comment="Etapas realizadas en esta sesión. NULL = todas (es_completada=True).",
+    )
 
     # Escala de satisfacción: 1 (muy difícil) → 5 (excelente)
     nivel_satisfaccion = Column(

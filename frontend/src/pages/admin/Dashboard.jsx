@@ -48,31 +48,49 @@ const IcoPlus = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
   </svg>
 )
+const IcoBook = () => (
+  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+    <path strokeLinecap="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+  </svg>
+)
 
-// ─── Datos simulados (se reemplazarán con authFetch cuando el backend esté disponible) ──
-const MOCK_STATS = {
-  usuarios:   { total: 24, activos: 21, nuevos_mes: 3 },
-  pacientes:  { total: 18, activos: 15, alta_este_mes: 2 },
-  terapeutas: { total: 8, internos: 5, externos: 3 },
-  actividades_hoy: 47,
+const TIPO_LABEL = { pdf: 'PDF', articulo: 'Artículo', guia: 'Guía', protocolo: 'Protocolo' }
+
+// ─── Modal lector de contenido ─────────────────────────────────────────────
+function ModalContenidoRecurso({ recurso, onClose }) {
+  return (
+    <div className="ov open" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="mo" style={{ maxWidth: 620 }}>
+        <div className="mh">
+          <div className="flex ic g8">
+            <IcoBook />
+            <div className="mt" style={{ fontSize: 15 }}>{recurso.titulo}</div>
+          </div>
+          <button className="btn btn-g btn-sm" onClick={onClose}>✕</button>
+        </div>
+        <div className="mb" style={{ maxHeight: '62vh', overflowY: 'auto' }}>
+          {recurso.descripcion && (
+            <div className="disc disc-tl txs" style={{ marginBottom: 12 }}>
+              {recurso.descripcion}
+            </div>
+          )}
+          {recurso.contenido_texto ? (
+            <div style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+              {recurso.contenido_texto}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text3)', fontSize: 13, fontStyle: 'italic' }}>
+              Este recurso no tiene contenido de texto cargado.
+            </div>
+          )}
+        </div>
+        <div className="mf">
+          <button className="btn btn-p btn-sm" onClick={onClose}>Cerrar</button>
+        </div>
+      </div>
+    </div>
+  )
 }
-
-const MOCK_AUDITORIA = [
-  { id: 1, tipo: 'login',   usuario: 'María González',  rol: 'Familiar',          accion: 'Inicio de sesión',              hora: 'hace 3 min',  estado: 'ok' },
-  { id: 2, tipo: 'create',  usuario: 'Dr. Ramírez',     rol: 'Terapeuta Interno', accion: 'Nuevo registro de seguimiento', hora: 'hace 12 min', estado: 'ok' },
-  { id: 3, tipo: 'alert',   usuario: 'Sistema',          rol: '—',                 accion: 'Alerta de inactividad: paciente #7', hora: 'hace 28 min', estado: 'alerta' },
-  { id: 4, tipo: 'create',  usuario: 'Admin',            rol: 'Administrador',     accion: 'Usuario creado: jorge.fernandez@mail.com', hora: 'hace 45 min', estado: 'ok' },
-  { id: 5, tipo: 'login',   usuario: 'Lic. Suárez',     rol: 'Terapeuta Externo', accion: 'Inicio de sesión',              hora: 'hace 1 h',   estado: 'ok' },
-  { id: 6, tipo: 'create',  usuario: 'Dr. Ramírez',     rol: 'Terapeuta Interno', accion: 'Nueva actividad asignada',      hora: 'hace 1 h',   estado: 'ok' },
-  { id: 7, tipo: 'alert',   usuario: 'Sistema',          rol: '—',                 accion: 'Consentimiento vencido: familiar #3', hora: 'hace 2 h', estado: 'alerta' },
-  { id: 8, tipo: 'login',   usuario: 'Carlos Méndez',   rol: 'Familiar',          accion: 'Inicio de sesión',              hora: 'hace 2 h',   estado: 'ok' },
-]
-
-const MOCK_USUARIOS_RECIENTES = [
-  { id: 1, nombre: 'Ana Torres',      email: 'ana.torres@mail.com',    rol: 'Familiar',          av: 'AT', avClass: 'av-tl', fecha: 'Hoy, 09:30' },
-  { id: 2, nombre: 'Dr. Luis Herrera',email: 'l.herrera@clinica.com',  rol: 'Terapeuta Interno', av: 'LH', avClass: 'av-pp', fecha: 'Ayer, 16:15' },
-  { id: 3, nombre: 'Marta Díaz',      email: 'marta.diaz@mail.com',    rol: 'Familiar',          av: 'MD', avClass: 'av-am', fecha: 'Ayer, 11:00' },
-]
 
 // ─── Componente StatCard ────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, subColor, accent, onClick }) {
@@ -148,10 +166,14 @@ export default function AdminDashboard() {
   const { user, authFetch } = useAuth()
   const navigate = useNavigate()
 
-  const [stats, setStats]       = useState(null)
-  const [auditoria, setAuditoria] = useState([])
-  const [recientes, setRecientes] = useState([])
-  const [loading, setLoading]   = useState(true)
+  const [stats, setStats]             = useState(null)
+  const [auditoria, setAuditoria]     = useState([])
+  const [recientes, setRecientes]     = useState([])
+  const [pendientes, setPendientes]   = useState([])
+  const [verContenido, setVerContenido] = useState(null)
+  const [validando, setValidando]     = useState(null)
+  const [toastMsg, setToastMsg]       = useState('')
+  const [loading, setLoading]         = useState(true)
 
   useEffect(() => {
     async function cargarDatos() {
@@ -159,8 +181,8 @@ export default function AdminDashboard() {
       try {
         // Endpoint agregado: devuelve stats + recientes en una sola llamada
         const [resDash, resAuditoria] = await Promise.allSettled([
-          authFetch('/api/v1/admin/dashboard'),
-          authFetch('/api/v1/auditoria/?limit=8'),
+          authFetch('/admin/dashboard'),
+          authFetch('/auditoria/?limit=8'),
         ])
 
         // Dashboard stats
@@ -173,6 +195,7 @@ export default function AdminDashboard() {
             terapeutas:      { total: s.terapeutas?.total ?? 0, internos: s.terapeutas?.internos ?? 0, externos: s.terapeutas?.externos ?? 0 },
             actividades_hoy: s.actividades_hoy ?? 0,
           })
+          setPendientes(Array.isArray(data.recursos_pendientes) ? data.recursos_pendientes : [])
           setRecientes(Array.isArray(data.recientes) ? data.recientes.map(u => ({
             id:      u.id,
             nombre:  u.nombre,
@@ -204,10 +227,9 @@ export default function AdminDashboard() {
         }
 
       } catch {
-        // error de red → mock para no dejar la UI completamente vacía
-        setStats(MOCK_STATS)
-        setAuditoria(MOCK_AUDITORIA)
-        setRecientes(MOCK_USUARIOS_RECIENTES)
+        setStats({ usuarios: { total: 0, activos: 0, nuevos_mes: 0 }, pacientes: { total: 0, activos: 0, alta_este_mes: 0 }, terapeutas: { total: 0, internos: 0, externos: 0 }, actividades_hoy: 0 })
+        setAuditoria([])
+        setRecientes([])
       } finally {
         setLoading(false)
       }
@@ -224,6 +246,29 @@ export default function AdminDashboard() {
     if (mins < 60)  return `hace ${mins} min`
     if (hours < 24) return `hace ${hours} h`
     return `hace ${days} día${days > 1 ? 's' : ''}`
+  }
+
+  function showToast(msg) {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(''), 2800)
+  }
+
+  async function handleValidar(recurso) {
+    setValidando(recurso.id)
+    try {
+      const res = await authFetch(`/recursos/${recurso.id}/validar`, { method: 'POST' })
+      if (res.ok) {
+        setPendientes(prev => prev.filter(r => r.id !== recurso.id))
+        showToast(`"${recurso.titulo}" validado. Ya está disponible para el Asistente IA.`)
+      } else {
+        const err = await res.json().catch(() => ({}))
+        showToast(err?.detail ?? 'Error al validar el recurso.')
+      }
+    } catch {
+      showToast('Error de conexión al intentar validar.')
+    } finally {
+      setValidando(null)
+    }
   }
 
   // ── Skeleton loader ────────────────────────────────────────────────
@@ -260,6 +305,8 @@ export default function AdminDashboard() {
 
   return (
     <div>
+      <div className={`toast ${toastMsg ? 'visible' : ''}`}>{toastMsg}</div>
+      {verContenido && <ModalContenidoRecurso recurso={verContenido} onClose={() => setVerContenido(null)} />}
 
       {/* ── Saludo ─────────────────────────────────────────────── */}
       <div className="flex ic jb mb20">
@@ -388,6 +435,70 @@ export default function AdminDashboard() {
                 </div>
               ))
             }
+          </div>
+
+          {/* ── Recursos pendientes de validación ─────────────── */}
+          <div className="card">
+            <div className="flex ic jb" style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Base de conocimiento</div>
+              {pendientes.length > 0 && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, background: 'var(--amber2)',
+                  color: 'var(--amber)', borderRadius: 20, padding: '2px 8px',
+                }}>
+                  {pendientes.length} pendiente{pendientes.length > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+
+            {pendientes.length === 0 ? (
+              <div className="flex ic g8" style={{ color: 'var(--teal)', fontSize: 12, padding: '8px 0' }}>
+                <IcoCheck /> <span>Base de conocimiento al día</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {pendientes.map(r => (
+                  <div key={r.id} style={{
+                    borderRadius: 8, border: '1px solid var(--border)',
+                    padding: '10px 12px', background: 'var(--bg)',
+                  }}>
+                    <div className="flex ic jb" style={{ marginBottom: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600,
+                        background: 'var(--amber2)', color: 'var(--amber)',
+                        borderRadius: 4, padding: '2px 6px' }}>
+                        {TIPO_LABEL[r.tipo] ?? r.tipo}
+                      </span>
+                      {r.subido_en && (
+                        <span className="txs tm">
+                          {new Date(r.subido_en).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, lineHeight: 1.3 }}>
+                      {r.titulo}
+                    </div>
+                    <div className="flex ic g6">
+                      <button
+                        className="btn btn-g btn-xs flex ic g4"
+                        onClick={() => setVerContenido(r)}
+                        title="Ver contenido del recurso"
+                        style={{ fontSize: 11 }}
+                      >
+                        <IcoBook /> Leer
+                      </button>
+                      <button
+                        className="btn btn-p btn-xs"
+                        disabled={validando === r.id}
+                        onClick={() => handleValidar(r)}
+                        style={{ fontSize: 11 }}
+                      >
+                        {validando === r.id ? '…' : '✓ Validar'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Acciones rápidas */}

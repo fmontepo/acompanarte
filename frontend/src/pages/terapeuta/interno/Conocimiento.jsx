@@ -34,15 +34,16 @@ function normalizeRecurso(r) {
     ? new Date(r.subido_en).toLocaleDateString('es-AR', { year: 'numeric', month: '2-digit' }).split('/').reverse().join('-')
     : '—'
   return {
-    id:        r.id,
-    titulo:    r.titulo,
+    id:              r.id,
+    titulo:          r.titulo,
     categoria,
-    resumen:   r.descripcion || '',
-    tags:      [],
+    resumen:         r.descripcion || '',
+    contenido_texto: r.contenido_texto || '',
+    tags:            [],
     fecha,
-    destacado: r.validado ?? false,
-    validado:  r.validado ?? false,
-    url:       r.url_storage ?? null,
+    destacado:       r.validado ?? false,
+    validado:        r.validado ?? false,
+    url:             r.url_storage ?? null,
   }
 }
 
@@ -155,17 +156,58 @@ function ModalNuevoRecurso({ onClose, onSave }) {
   )
 }
 
+// ─── Modal lector de contenido_texto ─────────────────────────────────────
+function ModalContenido({ recurso, onClose }) {
+  return (
+    <div className="ov open" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="mo" style={{ maxWidth: 640 }}>
+        <div className="mh">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <IcoBook />
+            <div className="mt" style={{ fontSize: 15 }}>{recurso.titulo}</div>
+          </div>
+          <button className="btn btn-g btn-sm" onClick={onClose}>✕</button>
+        </div>
+        <div className="mb" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+          {recurso.contenido_texto ? (
+            <div style={{
+              fontSize: 13, lineHeight: 1.7, color: 'var(--text)',
+              whiteSpace: 'pre-wrap', fontFamily: 'inherit',
+            }}>
+              {recurso.contenido_texto}
+            </div>
+          ) : (
+            <div className="disc disc-tl txs" style={{ textAlign: 'center', padding: '32px 0' }}>
+              Este recurso no tiene contenido de texto cargado.
+            </div>
+          )}
+        </div>
+        <div className="mf">
+          {recurso.url && (
+            <a href={recurso.url} target="_blank" rel="noopener noreferrer"
+              className="btn btn-s btn-sm">
+              Ver recurso externo →
+            </a>
+          )}
+          <button className="btn btn-p btn-sm" onClick={onClose}>Cerrar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────
 export default function TerIntConocimiento() {
   const { authFetch } = useAuth()
-  const [articulos, setArticulos] = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [busqueda, setBusqueda]   = useState('')
-  const [cat, setCat]             = useState('Todas')
-  const [expandido, setExpandido] = useState(null)
-  const [modal, setModal]         = useState(false)
-  const [toast, setToast]         = useState('')
-  const [validando, setValidando] = useState(null)   // id del recurso que se está validando
+  const [articulos, setArticulos]     = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [busqueda, setBusqueda]       = useState('')
+  const [cat, setCat]                 = useState('Todas')
+  const [expandido, setExpandido]     = useState(null)
+  const [modal, setModal]             = useState(false)
+  const [verContenido, setVerContenido] = useState(null)  // recurso cuyo texto se muestra
+  const [toast, setToast]             = useState('')
+  const [validando, setValidando]     = useState(null)   // id del recurso que se está validando
 
   function showToast(msg) {
     setToast(msg)
@@ -177,7 +219,7 @@ export default function TerIntConocimiento() {
     async function cargar() {
       setLoading(true)
       try {
-        const res = await authFetch('/api/v1/recursos/?solo_validados=false')
+        const res = await authFetch('/recursos/?solo_validados=false')
         if (res.ok) {
           const data = await res.json()
           setArticulos(Array.isArray(data) ? data.map(normalizeRecurso) : [])
@@ -196,7 +238,7 @@ export default function TerIntConocimiento() {
   // ── Crear nuevo recurso ──────────────────────────────────────────────
   async function handleSave(formData) {
     try {
-      const res = await authFetch('/api/v1/recursos/', {
+      const res = await authFetch('/recursos/', {
         method: 'POST',
         body: JSON.stringify(formData),
       })
@@ -235,7 +277,7 @@ export default function TerIntConocimiento() {
     e.stopPropagation()
     setValidando(id)
     try {
-      const res = await authFetch(`/api/v1/recursos/${id}/validar`, { method: 'POST' })
+      const res = await authFetch(`/recursos/${id}/validar`, { method: 'POST' })
       if (res.ok) {
         setArticulos(prev => prev.map(a =>
           a.id === id ? { ...a, validado: true, destacado: true } : a
@@ -354,19 +396,28 @@ export default function TerIntConocimiento() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {filtrados.map(a => (
-                <div key={a.id} className="card" style={{ cursor: 'pointer', transition: 'box-shadow 0.15s' }}
-                  onClick={() => setExpandido(expandido === a.id ? null : a.id)}
+                <div key={a.id} className="card" style={{ transition: 'box-shadow 0.15s' }}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
 
                   <div className="flex ic jb">
                     <div className="flex ic g10" style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ width: 34, height: 34, borderRadius: 8,
-                        background: a.validado ? 'var(--purple2)' : 'var(--bg2)',
-                        color: a.validado ? 'var(--purple)' : 'var(--text3)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {/* Ícono libro — abre el contenido_texto */}
+                      <button
+                        onClick={() => setVerContenido(a)}
+                        title={a.contenido_texto ? 'Ver contenido del recurso' : 'Sin contenido de texto cargado'}
+                        style={{
+                          width: 34, height: 34, borderRadius: 8, border: 'none', cursor: 'pointer',
+                          background: a.validado ? 'var(--purple2)' : 'var(--bg2)',
+                          color: a.validado ? 'var(--purple)' : 'var(--text3)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                          transition: 'opacity 0.15s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
+                        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                      >
                         <IcoBook />
-                      </div>
+                      </button>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 600 }}>{a.titulo}</div>
                         <div className="flex ic g6" style={{ marginTop: 4, flexWrap: 'wrap' }}>
@@ -388,9 +439,15 @@ export default function TerIntConocimiento() {
                           {validando === a.id ? '…' : 'Validar'}
                         </button>
                       )}
-                      <span style={{ color: 'var(--text3)', fontSize: 18 }}>
+                      {/* Botón + — expande la descripción */}
+                      <button
+                        style={{ background: 'none', border: 'none', cursor: 'pointer',
+                          color: 'var(--text3)', fontSize: 20, lineHeight: 1, padding: '0 2px' }}
+                        onClick={() => setExpandido(expandido === a.id ? null : a.id)}
+                        title={expandido === a.id ? 'Ocultar descripción' : 'Ver descripción'}
+                      >
                         {expandido === a.id ? '−' : '+'}
-                      </span>
+                      </button>
                     </div>
                   </div>
 
@@ -400,8 +457,7 @@ export default function TerIntConocimiento() {
                       {a.resumen || <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>Sin descripción.</span>}
                       {a.url && (
                         <a href={a.url} target="_blank" rel="noopener noreferrer"
-                          className="btn btn-s btn-sm" style={{ display: 'inline-block', marginTop: 10 }}
-                          onClick={e => e.stopPropagation()}>
+                          className="btn btn-s btn-sm" style={{ display: 'inline-block', marginTop: 10 }}>
                           Ver recurso →
                         </a>
                       )}
@@ -416,6 +472,7 @@ export default function TerIntConocimiento() {
       )}
 
       {modal && <ModalNuevoRecurso onClose={() => setModal(false)} onSave={handleSave} />}
+      {verContenido && <ModalContenido recurso={verContenido} onClose={() => setVerContenido(null)} />}
     </div>
   )
 }
