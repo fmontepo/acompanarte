@@ -99,7 +99,12 @@ function ModalUsuario({ usuario, onClose, onSave }) {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.nombre.trim() || !form.email.trim()) { setError('Nombre y correo son obligatorios.'); return }
-    if (!isEdit && !form.password.trim()) { setError('La contraseña es obligatoria para usuarios nuevos.'); return }
+    if (!isEdit) {
+      if (!form.password.trim()) { setError('La contraseña es obligatoria para usuarios nuevos.'); return }
+      if (form.password.length < 8) { setError('La contraseña debe tener al menos 8 caracteres.'); return }
+      if (!/[A-Z]/.test(form.password)) { setError('La contraseña debe contener al menos una letra mayúscula.'); return }
+      if (!/\d/.test(form.password)) { setError('La contraseña debe contener al menos un número.'); return }
+    }
     setSaving(true)
     await new Promise(r => setTimeout(r, 600))
     setSaving(false)
@@ -142,6 +147,7 @@ function ModalUsuario({ usuario, onClose, onSave }) {
                 <label className="fl">Contraseña *</label>
                 <input className="fi" name="password" type="password" value={form.password}
                   onChange={handleChange} placeholder="Mínimo 8 caracteres" />
+                <span className="txs tm">Mínimo 8 caracteres, una mayúscula y un número. Ej: <em>Acmp2024!</em></span>
               </div>
             )}
             {isEdit && (
@@ -234,7 +240,10 @@ export default function AdminUsuarios() {
           showToast('Usuario creado correctamente.')
         } else {
           const err = await res.json().catch(() => ({}))
-          showToast(err.detail ?? 'Error al crear el usuario.')
+          const msg = Array.isArray(err.detail)
+            ? err.detail.map(e => e.msg).join('. ')
+            : (err.detail ?? 'Error al crear el usuario.')
+          showToast(msg)
           return
         }
       } catch {
@@ -258,7 +267,10 @@ export default function AdminUsuarios() {
           showToast('Cambios guardados correctamente.')
         } else {
           const err = await res.json().catch(() => ({}))
-          showToast(err.detail ?? 'Error al guardar los cambios.')
+          const msg = Array.isArray(err.detail)
+            ? err.detail.map(e => e.msg).join('. ')
+            : (err.detail ?? 'Error al guardar los cambios.')
+          showToast(msg)
           return
         }
       } catch {
