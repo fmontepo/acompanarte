@@ -9,6 +9,7 @@ from app.db.base import Base
 from app.models.rol import Rol
 from app.models.contacto_publico import ContactoPublico  # noqa: F401 — necesario para create_all
 from app.models.regla_ia import ReglaIA                  # noqa: F401 — necesario para create_all
+from app.models.parentesco import Parentesco              # noqa: F401 — necesario para create_all
 
 from app.api.usuario_router import router as usuario_router
 from app.api.paciente_router import router as paciente_router
@@ -64,6 +65,7 @@ _ROLES_SEED = [
         "nav_config": [
             {"section": "Principal", "items": [
                 {"id": "ter-int-dash",        "icon": "home",      "label": "Panel de inicio"},
+                {"id": "ter-int-pacientes",   "icon": "users",     "label": "Pacientes"},
                 {"id": "ter-int-registros",   "icon": "pencil",    "label": "Registros"},
                 {"id": "ter-int-actividades", "icon": "clipboard", "label": "Actividades"},
             ]},
@@ -92,7 +94,7 @@ _ROLES_SEED = [
         "nav_config": [
             {"section": "Sistema", "items": [
                 {"id": "admin-dash",      "icon": "home",      "label": "Panel de inicio"},
-                {"id": "admin-usuarios",  "icon": "users",     "label": "Terapeutas"},
+                {"id": "admin-usuarios",  "icon": "users",     "label": "Usuarios"},
                 {"id": "admin-contactos", "icon": "mail",       "label": "Contactos TEA"},
                 {"id": "admin-reglas",    "icon": "shield",     "label": "Reglas IA"},
                 {"id": "admin-auditoria", "icon": "bar-chart",  "label": "Auditoría"},
@@ -197,6 +199,26 @@ async def _seed_roles():
         await session.commit()
 
 
+async def _seed_parentescos():
+    """Inserta los tipos de parentesco si la tabla está vacía. Idempotente."""
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(Parentesco))
+        if result.scalars().first() is not None:
+            return  # ya sembrado
+        parentescos = [
+            ("MA", "Madre"),
+            ("PA", "Padre"),
+            ("AB", "Abuelo/a"),
+            ("TI", "Tío/a"),
+            ("HE", "Hermano/a"),
+            ("TU", "Tutor legal"),
+            ("OT", "Otro"),
+        ]
+        for id_p, nombre in parentescos:
+            session.add(Parentesco(id_parentesco=id_p, nombre=nombre))
+        await session.commit()
+
+
 async def _seed_reglas_ia():
     """Inserta las reglas de IA por defecto si la tabla está vacía. Idempotente."""
     async with AsyncSessionLocal() as session:
@@ -253,6 +275,7 @@ async def lifespan(app: FastAPI):
     # Seed roles iniciales si la tabla está vacía
     await _seed_roles()
     await _seed_reglas_ia()
+    await _seed_parentescos()
     yield
     # Shutdown: liberar el pool de conexiones
     await engine.dispose()

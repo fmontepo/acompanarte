@@ -95,6 +95,7 @@ const SCREEN_TO_PATH = {
   'alertas':                '/familiar/alertas',
   // ter-int
   'ter-int-dash':           '/terapeuta/interno/dashboard',
+  'ter-int-pacientes':      '/terapeuta/interno/pacientes',
   'ter-int-registros':      '/terapeuta/interno/registros',
   'ter-int-actividades':    '/terapeuta/interno/actividades',
   'ter-int-asistente':      '/terapeuta/interno/asistente',
