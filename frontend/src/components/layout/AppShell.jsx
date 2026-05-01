@@ -89,6 +89,7 @@ const ICONS = {
 const SCREEN_TO_PATH = {
   // familia
   'dashboard':              '/familiar/dashboard',
+  'mis-parientes':          '/familiar/mis-parientes',
   'seguimientos':           '/familiar/seguimientos',
   'actividades':            '/familiar/actividades',
   'asistente':              '/familiar/asistente',

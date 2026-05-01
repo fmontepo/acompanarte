@@ -25,6 +25,7 @@ from app.models.miembroEquipo import MiembroEquipo
 from app.models.equipoTerapeutico import EquipoTerapeutico
 from app.models.progresoActividad import ProgresoActividad
 from app.models.recursoProfesional import RecursoProfesional
+from app.models.parentesco import Parentesco
 
 router = APIRouter(tags=["Dashboards"])
 
@@ -763,3 +764,60 @@ async def terapeuta_externo_dashboard(current_user: CurrentUser, db: DBDep):
         ],
         "agenda": [],
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FAMILIAR: MIS VÍNCULOS — GET /api/v1/familiar/mis-vinculos
+# Devuelve todos los pacientes a los que está vinculado el familiar logueado.
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get(
+    "/familiar/mis-vinculos",
+    summary="Pacientes vinculados al familiar autenticado",
+    dependencies=[Depends(require_roles("familia"))],
+)
+async def familiar_mis_vinculos(current_user: CurrentUser, db: DBDep):
+    # Buscar perfil familiar
+    fam_q = await db.execute(
+        select(Familiar).where(Familiar.usuario_id == current_user.id)
+    )
+    familiar = fam_q.scalar_one_or_none()
+    if not familiar:
+        return []
+
+    # Cargar todos los vínculos activos con paciente y parentesco
+    v_q = await db.execute(
+        select(VinculoPaciente)
+        .options(
+            joinedload(VinculoPaciente.paciente),
+            joinedload(VinculoPaciente.parentesco),
+        )
+        .where(
+            VinculoPaciente.familiar_id == familiar.id,
+            VinculoPaciente.activo == True,
+        )
+        .order_by(VinculoPaciente.desde)
+    )
+    vinculos = v_q.unique().scalars().all()
+
+    result = []
+    for v in vinculos:
+        p = v.paciente
+        if not p:
+            continue
+        result.append({
+            "vinculo_id":        str(v.id),
+            "paciente_id":       str(p.id),
+            "nombre":            p.nombre_enc or "—",
+            "apellido":          p.apellido_enc or "",
+            "edad":              _calcular_edad(p.fecha_nacimiento),
+            "fecha_nacimiento":  p.fecha_nacimiento.isoformat() if p.fecha_nacimiento else None,
+            "sexo":              p.sexo,
+            "nivel_soporte":     p.nivel_soporte,
+            "parentesco":        v.id_parentesco,
+            "parentesco_nombre": v.parentesco.nombre if v.parentesco else v.id_parentesco,
+            "es_tutor_legal":    v.es_tutor_legal,
+            "autorizado_medico": v.autorizado_medico,
+            "vinculado_desde":   v.desde.isoformat() if v.desde else None,
+            "activo":            p.activo,
+        })
+    return result

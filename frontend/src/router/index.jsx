@@ -6,6 +6,7 @@ import AppShell from '../components/layout/AppShell'
 
 // Familia
 import FamDashboard    from '../pages/familiar/Dashboard'
+import FamMisParientes from '../pages/familiar/MisParientes'
 import FamSeguimientos from '../pages/familiar/Seguimientos'
 import FamActividades  from '../pages/familiar/Actividades'
 import FamAsistente    from '../pages/familiar/Asistente'
@@ -100,8 +101,9 @@ export default function AppRouter() {
         <Route element={<ProtectedRoute allowedRoles={['familia']} />}>
           <Route path="/familiar" element={<AppShell />}>
             <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard"    element={<FamDashboard />} />
-            <Route path="seguimientos" element={<FamSeguimientos />} />
+            <Route path="dashboard"      element={<FamDashboard />} />
+            <Route path="mis-parientes" element={<FamMisParientes />} />
+            <Route path="seguimientos"  element={<FamSeguimientos />} />
             <Route path="actividades"  element={<FamActividades />} />
             <Route path="asistente"    element={<FamAsistente />} />
             <Route path="alertas"      element={<FamAlertas />} />

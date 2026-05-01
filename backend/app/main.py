@@ -48,9 +48,10 @@ _ROLES_SEED = [
         "default_path": "/familiar/dashboard",
         "nav_config": [
             {"section": "Principal", "items": [
-                {"id": "dashboard",    "icon": "home",      "label": "Panel de inicio"},
-                {"id": "seguimientos", "icon": "clipboard", "label": "Seguimientos"},
-                {"id": "actividades",  "icon": "target",    "label": "Actividades"},
+                {"id": "dashboard",     "icon": "home",      "label": "Panel de inicio"},
+                {"id": "mis-parientes", "icon": "users",     "label": "Mis parientes"},
+                {"id": "seguimientos",  "icon": "clipboard", "label": "Seguimientos"},
+                {"id": "actividades",   "icon": "target",    "label": "Actividades"},
             ]},
             {"section": "Herramientas", "items": [
                 {"id": "asistente", "icon": "bot",  "label": "Asistente IA"},
