@@ -172,7 +172,7 @@ export default function AdminDashboard() {
   const [pendientes, setPendientes]   = useState([])
   const [verContenido, setVerContenido] = useState(null)
   const [validando, setValidando]     = useState(null)
-  const [toastMsg, setToastMsg]       = useState('')
+  const [toastMsg, setToastMsg]       = useState({ msg: '', ok: true })
   const [loading, setLoading]         = useState(true)
 
   useEffect(() => {
@@ -248,9 +248,9 @@ export default function AdminDashboard() {
     return `hace ${days} día${days > 1 ? 's' : ''}`
   }
 
-  function showToast(msg) {
-    setToastMsg(msg)
-    setTimeout(() => setToastMsg(''), 2800)
+  function showToast(msg, ok = true) {
+    setToastMsg({ msg, ok })
+    setTimeout(() => setToastMsg({ msg: '', ok: true }), 2800)
   }
 
   async function handleValidar(recurso) {
@@ -262,10 +262,10 @@ export default function AdminDashboard() {
         showToast(`"${recurso.titulo}" validado. Ya está disponible para el Asistente IA.`)
       } else {
         const err = await res.json().catch(() => ({}))
-        showToast(err?.detail ?? 'Error al validar el recurso.')
+        showToast(err?.detail ?? 'Error al validar el recurso.', false)
       }
     } catch {
-      showToast('Error de conexión al intentar validar.')
+      showToast('Error de conexión al intentar validar.', false)
     } finally {
       setValidando(null)
     }
@@ -305,7 +305,7 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <div className={`toast ${toastMsg ? 'visible' : ''}`}>{toastMsg}</div>
+      <div className={`toast ${toastMsg.msg ? 'visible' : ''} ${!toastMsg.ok ? 'error' : ''}`}>{toastMsg.msg}</div>
       {verContenido && <ModalContenidoRecurso recurso={verContenido} onClose={() => setVerContenido(null)} />}
 
       {/* ── Saludo ─────────────────────────────────────────────── */}

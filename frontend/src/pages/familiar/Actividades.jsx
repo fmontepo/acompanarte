@@ -187,7 +187,7 @@ export default function FamiliarActividades() {
   const { authFetch } = useAuth()
   const [actividades, setActividades] = useState([])
   const [loading,     setLoading]     = useState(true)
-  const [toast,       setToast]       = useState('')
+  const [toast,       setToast]       = useState({ msg: '', ok: true })
   const [modal,       setModal]       = useState(null)
 
   useEffect(() => {
@@ -205,9 +205,9 @@ export default function FamiliarActividades() {
     cargar()
   }, [authFetch])
 
-  function showToast(msg) {
-    setToast(msg)
-    setTimeout(() => setToast(''), 2800)
+  function showToast(msg, ok = true) {
+    setToast({ msg, ok })
+    setTimeout(() => setToast({ msg: '', ok: true }), 2800)
   }
 
   async function handleGuardarProgreso(opciones) {
@@ -231,14 +231,14 @@ export default function FamiliarActividades() {
         ))
         showToast(
           opciones.es_completada
-            ? '¡Actividad completada! 🎉'
+            ? '¡Actividad completada!'
             : `Progreso guardado (${opciones.etapas_completadas} etapa${opciones.etapas_completadas !== 1 ? 's' : ''})`
         )
       } else {
-        showToast('Error al guardar. Intentá de nuevo.')
+        showToast('Error al guardar. Intentá de nuevo.', false)
       }
     } catch {
-      showToast('No se pudo conectar con el servidor.')
+      showToast('No se pudo conectar con el servidor.', false)
     }
     setModal(null)
   }
@@ -248,7 +248,7 @@ export default function FamiliarActividades() {
 
   return (
     <div>
-      <div className={`toast ${toast ? 'visible' : ''}`}>{toast}</div>
+      <div className={`toast ${toast.msg ? 'visible' : ''} ${!toast.ok ? 'error' : ''}`}>{toast.msg}</div>
 
       {modal && (
         <ModalProgreso

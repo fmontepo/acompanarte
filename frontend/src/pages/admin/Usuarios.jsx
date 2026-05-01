@@ -208,7 +208,7 @@ export default function AdminUsuarios() {
   const [sortCol, setSortCol]     = useState('nombre')
   const [sortDir, setSortDir]     = useState('asc')
   const [modal, setModal]         = useState(null)
-  const [toast, setToast]         = useState('')
+  const [toast, setToast]         = useState({ msg: '', ok: true })
 
   // Normaliza el objeto usuario del backend al shape esperado por la tabla
   function normalizeUser(u) {
@@ -241,9 +241,9 @@ export default function AdminUsuarios() {
     cargar()
   }, [authFetch])
 
-  function showToast(msg) {
-    setToast(msg)
-    setTimeout(() => setToast(''), 2800)
+  function showToast(msg, ok = true) {
+    setToast({ msg, ok })
+    setTimeout(() => setToast({ msg: '', ok: true }), 2800)
   }
 
   async function handleSave(form) {
@@ -268,11 +268,11 @@ export default function AdminUsuarios() {
           const msg = Array.isArray(err.detail)
             ? err.detail.map(e => e.msg).join('. ')
             : (err.detail ?? 'Error al crear el usuario.')
-          showToast(msg)
+          showToast(msg, false)
           return
         }
       } catch {
-        showToast('Error de conexión.')
+        showToast('Error de conexión.', false)
         return
       }
     } else {
@@ -295,11 +295,11 @@ export default function AdminUsuarios() {
           const msg = Array.isArray(err.detail)
             ? err.detail.map(e => e.msg).join('. ')
             : (err.detail ?? 'Error al guardar los cambios.')
-          showToast(msg)
+          showToast(msg, false)
           return
         }
       } catch {
-        showToast('Error de conexión.')
+        showToast('Error de conexión.', false)
         return
       }
     }
@@ -321,11 +321,11 @@ export default function AdminUsuarios() {
       } else {
         // Revertir si falla
         setUsuarios(prev => prev.map(x => x.id === id ? { ...x, activo: u.activo } : x))
-        showToast('Error al cambiar el estado del usuario.')
+        showToast('Error al cambiar el estado del usuario.', false)
       }
     } catch {
       setUsuarios(prev => prev.map(x => x.id === id ? { ...x, activo: u.activo } : x))
-      showToast('Error de conexión.')
+      showToast('Error de conexión.', false)
     }
   }
 
@@ -378,7 +378,7 @@ export default function AdminUsuarios() {
 
   return (
     <div>
-      <div className={`toast ${toast ? 'visible' : ''}`}>{toast}</div>
+      <div className={`toast ${toast.msg ? 'visible' : ''} ${!toast.ok ? 'error' : ''}`}>{toast.msg}</div>
 
       <div className="flex ic jb mb20">
         <div>

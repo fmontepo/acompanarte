@@ -21,7 +21,7 @@ export default function TerIntAlertas() {
   const [alertas, setAlertas]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [filtro, setFiltro]     = useState('activas')
-  const [toast, setToast]       = useState('')
+  const [toast, setToast]       = useState({ msg: '', ok: true })
 
   // Backend: {id, sesion_id, tipo, severidad, descripcion, resuelta, creada_en}
   // Frontend: {id, paciente, av, avClass, tipo, titulo, texto, fecha, resuelta}
@@ -72,16 +72,16 @@ export default function TerIntAlertas() {
     try {
       const res = await authFetch(`/alertas/${id}/resolver`, { method: 'POST' })
       if (res.ok) {
-        setToast('Alerta marcada como resuelta.')
+        setToast({ msg: 'Alerta marcada como resuelta.', ok: true })
       } else {
         // Revertir si falla
         setAlertas(prev => prev.map(a => a.id === id ? { ...a, resuelta: false } : a))
-        setToast('Error al resolver la alerta.')
+        setToast({ msg: 'Error al resolver la alerta.', ok: false })
       }
     } catch {
-      setToast('Resuelta localmente (sin conexión).')
+      setToast({ msg: 'Resuelta localmente (sin conexión).', ok: true })
     }
-    setTimeout(() => setToast(''), 2500)
+    setTimeout(() => setToast({ msg: '', ok: true }), 2500)
   }
 
   const pendientes = alertas.filter(a => !a.resuelta)
@@ -90,7 +90,7 @@ export default function TerIntAlertas() {
 
   return (
     <div>
-      <div className={`toast ${toast ? 'visible' : ''}`}>{toast}</div>
+      <div className={`toast ${toast.msg ? 'visible' : ''} ${!toast.ok ? 'error' : ''}`}>{toast.msg}</div>
 
       <div className="flex ic jb mb20">
         <div>

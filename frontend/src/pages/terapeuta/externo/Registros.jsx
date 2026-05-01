@@ -84,7 +84,7 @@ export default function TerExtRegistros() {
   const [pacientes, setPacientes] = useState(PACIENTES_DEFAULT.map((n, i) => ({ id: i+1, nombre: n })))
   const [loading, setLoading]     = useState(true)
   const [modal, setModal]         = useState(false)
-  const [toast, setToast]         = useState('')
+  const [toast, setToast]         = useState({ msg: '', ok: true })
 
   function normalizeRegistro(r, pacsMap) {
     const pac = pacsMap?.[r.paciente_id]
@@ -162,21 +162,23 @@ export default function TerExtRegistros() {
         nota: form.nota, estado: 'completado',
       }
       setRegistros(prev => [nuevo, ...prev])
-      setToast(res.ok ? 'Registro guardado correctamente.' : 'Guardado localmente (error de servidor).')
+      setToast(res.ok
+        ? { msg: 'Registro guardado correctamente.', ok: true }
+        : { msg: 'Error al guardar en el servidor. Se guardó localmente.', ok: false })
     } catch {
       setRegistros(prev => [{
         id: Date.now(), paciente: nombre, av: initials, avClass,
         tipo: form.tipo, fecha: new Date().toISOString(), nota: form.nota, estado: 'completado',
       }, ...prev])
-      setToast('Guardado localmente (sin conexión).')
+      setToast({ msg: 'Sin conexión. Guardado localmente.', ok: false })
     }
     setModal(false)
-    setTimeout(() => setToast(''), 2500)
+    setTimeout(() => setToast({ msg: '', ok: true }), 2500)
   }
 
   return (
     <div>
-      <div className={`toast ${toast ? 'visible' : ''}`}>{toast}</div>
+      <div className={`toast ${toast.msg ? 'visible' : ''} ${!toast.ok ? 'error' : ''}`}>{toast.msg}</div>
       <div className="flex ic jb mb20">
         <div>
           <div style={{ fontSize: 20, fontWeight: 700 }}>Mis registros</div>

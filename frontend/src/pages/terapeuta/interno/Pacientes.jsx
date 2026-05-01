@@ -464,7 +464,7 @@ export default function TerIntPacientes() {
   const [soloActivos, setSoloActivos] = useState(true)
   const [modal,       setModal]       = useState(null)  // null | 'crear' | 'editar' | 'vincular'
   const [seleccionado, setSeleccionado] = useState(null)
-  const [toast,       setToast]       = useState('')
+  const [toast,       setToast]       = useState({ msg: '', ok: true })
 
   // ── Carga de datos ──────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
@@ -483,9 +483,9 @@ export default function TerIntPacientes() {
   useEffect(() => { cargar() }, [cargar])
 
   // ── Toast ───────────────────────────────────────────────────────────────────
-  function mostrarToast(msg) {
-    setToast(msg)
-    setTimeout(() => setToast(''), 3000)
+  function mostrarToast(msg, ok = true) {
+    setToast({ msg, ok })
+    setTimeout(() => setToast({ msg: '', ok: true }), 3000)
   }
 
   // ── Filtrado ────────────────────────────────────────────────────────────────
@@ -528,7 +528,7 @@ export default function TerIntPacientes() {
       }
       mostrarToast('Familiar desvinculado.')
     } catch (err) {
-      mostrarToast(`Error: ${err.message}`)
+      mostrarToast(`Error: ${err.message}`, false)
     }
   }
 
@@ -537,17 +537,7 @@ export default function TerIntPacientes() {
     <div style={{ padding: '24px 28px', maxWidth: 1100, margin: '0 auto' }}>
 
       {/* Toast */}
-      {toast && (
-        <div style={{
-          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
-          background: 'var(--teal)', color: '#fff',
-          padding: '12px 20px', borderRadius: 10, fontSize: 14, fontWeight: 500,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          animation: 'fadeIn 0.2s ease',
-        }}>
-          {toast}
-        </div>
-      )}
+      <div className={`toast ${toast.msg ? 'visible' : ''} ${!toast.ok ? 'error' : ''}`}>{toast.msg}</div>
 
       {/* Modales */}
       {modal === 'crear' && (

@@ -129,7 +129,7 @@ export default function TerIntActividades() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal]     = useState(false)
   const [filtroPac, setFiltroPac] = useState('todos')
-  const [toast, setToast]     = useState('')
+  const [toast, setToast]     = useState({ msg: '', ok: true })
 
   useEffect(() => {
     // Backend devuelve: {id, terapeuta_id, paciente_id, titulo, descripcion, frecuencia, activa, …}
@@ -205,24 +205,24 @@ export default function TerIntActividades() {
           total_etapas: data.total_etapas ?? form.total_etapas ?? 1,
           activa:       true,
         }, ...prev])
-        setToast('Actividad creada correctamente.')
+        setToast({ msg: 'Actividad creada correctamente.', ok: true })
       } else {
-        setToast('Error al crear la actividad.')
+        setToast({ msg: 'Error al crear la actividad.', ok: false })
       }
     } catch {
       // Fallback local
       setActividades(prev => [{ id: Date.now(), ...form, completadas: 0, total: form.total_etapas ?? 1, activa: true }, ...prev])
-      setToast('Guardada localmente (sin conexión).')
+      setToast({ msg: 'Sin conexión. Guardada localmente.', ok: false })
     }
     setModal(false)
-    setTimeout(() => setToast(''), 2500)
+    setTimeout(() => setToast({ msg: '', ok: true }), 2500)
   }
 
   const filtradas = filtroPac === 'todos' ? actividades : actividades.filter(a => a.paciente === filtroPac)
 
   return (
     <div>
-      <div className={`toast ${toast ? 'visible' : ''}`}>{toast}</div>
+      <div className={`toast ${toast.msg ? 'visible' : ''} ${!toast.ok ? 'error' : ''}`}>{toast.msg}</div>
       <div className="flex ic jb mb20">
         <div>
           <div style={{ fontSize: 20, fontWeight: 700 }}>Actividades</div>

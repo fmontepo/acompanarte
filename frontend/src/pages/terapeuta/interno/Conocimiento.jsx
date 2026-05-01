@@ -206,12 +206,12 @@ export default function TerIntConocimiento() {
   const [expandido, setExpandido]     = useState(null)
   const [modal, setModal]             = useState(false)
   const [verContenido, setVerContenido] = useState(null)  // recurso cuyo texto se muestra
-  const [toast, setToast]             = useState('')
+  const [toast, setToast]             = useState({ msg: '', ok: true })
   const [validando, setValidando]     = useState(null)   // id del recurso que se está validando
 
-  function showToast(msg) {
-    setToast(msg)
-    setTimeout(() => setToast(''), 2800)
+  function showToast(msg, ok = true) {
+    setToast({ msg, ok })
+    setTimeout(() => setToast({ msg: '', ok: true }), 2800)
   }
 
   // ── Carga inicial ────────────────────────────────────────────────────
@@ -250,7 +250,7 @@ export default function TerIntConocimiento() {
         showToast('Recurso agregado. Pendiente de validación.')
       } else {
         const err = await res.json().catch(() => ({}))
-        showToast(err?.detail ?? 'Error al guardar el recurso.')
+        showToast(err?.detail ?? 'Error al guardar el recurso.', false)
         setModal(false)
       }
     } catch {
@@ -268,7 +268,7 @@ export default function TerIntConocimiento() {
       }
       setArticulos(prev => [local, ...prev])
       setModal(false)
-      showToast('Guardado localmente (sin conexión).')
+      showToast('Sin conexión. Guardado localmente.', false)
     }
   }
 
@@ -285,10 +285,10 @@ export default function TerIntConocimiento() {
         showToast('Recurso validado. Ahora está disponible para el Asistente IA.')
       } else {
         const err = await res.json().catch(() => ({}))
-        showToast(err?.detail ?? 'Error al validar el recurso.')
+        showToast(err?.detail ?? 'Error al validar el recurso.', false)
       }
     } catch {
-      showToast('Error de conexión al intentar validar.')
+      showToast('Error de conexión al intentar validar.', false)
     } finally {
       setValidando(null)
     }
@@ -306,7 +306,7 @@ export default function TerIntConocimiento() {
 
   return (
     <div>
-      <div className={`toast ${toast ? 'visible' : ''}`}>{toast}</div>
+      <div className={`toast ${toast.msg ? 'visible' : ''} ${!toast.ok ? 'error' : ''}`}>{toast.msg}</div>
 
       {/* Header */}
       <div className="flex ic jb mb20">

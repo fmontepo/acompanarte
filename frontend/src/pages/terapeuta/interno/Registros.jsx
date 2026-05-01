@@ -108,7 +108,7 @@ export default function TerIntRegistros() {
   const [loading, setLoading]       = useState(true)
   const [modal, setModal]           = useState(false)
   const [filtro, setFiltro]         = useState('todos')
-  const [toast, setToast]           = useState('')
+  const [toast, setToast]           = useState({ msg: '', ok: true })
 
   // Normaliza el schema del backend al shape esperado por la tabla
   function normalizeRegistro(r, pacsMap) {
@@ -190,9 +190,9 @@ export default function TerIntRegistros() {
           estado:   form.estado,
         }
         setRegistros(prev => [nuevo, ...prev])
-        setToast('Registro guardado correctamente.')
+        setToast({ msg: 'Registro guardado correctamente.', ok: true })
       } else {
-        setToast('Error al guardar el registro.')
+        setToast({ msg: 'Error al guardar el registro.', ok: false })
       }
     } catch {
       // Fallback local si no hay conexión
@@ -203,17 +203,17 @@ export default function TerIntRegistros() {
         nota: form.nota, estado: form.estado,
       }
       setRegistros(prev => [nuevo, ...prev])
-      setToast('Guardado localmente (sin conexión).')
+      setToast({ msg: 'Sin conexión. Guardado localmente.', ok: false })
     }
     setModal(false)
-    setTimeout(() => setToast(''), 2500)
+    setTimeout(() => setToast({ msg: '', ok: true }), 2500)
   }
 
   const filtrados = filtro === 'todos' ? registros : registros.filter(r => r.estado === filtro)
 
   return (
     <div>
-      <div className={`toast ${toast ? 'visible' : ''}`}>{toast}</div>
+      <div className={`toast ${toast.msg ? 'visible' : ''} ${!toast.ok ? 'error' : ''}`}>{toast.msg}</div>
 
       <div className="flex ic jb mb20">
         <div>

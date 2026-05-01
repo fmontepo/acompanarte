@@ -190,16 +190,21 @@ body {
   bottom: 22px;
   left: 50%;
   transform: translateX(-50%) translateY(60px);
-  background: var(--text);
+  background: var(--teal);   /* éxito: celeste */
   color: #fff;
   font-size: 13px;
-  padding: 10px 18px;
+  font-weight: 500;
+  padding: 11px 22px;
   border-radius: 8px;
   opacity: 0;
   transition: all 0.3s;
   pointer-events: none;
   z-index: 9999;
   white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.toast.error {
+  background: var(--red);     /* error: rojo */
 }
 .toast.visible {
   transform: translateX(-50%) translateY(0);
