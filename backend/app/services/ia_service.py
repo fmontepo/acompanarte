@@ -36,7 +36,7 @@ EMBEDDING_MODEL_NAME = os.getenv(
 )
 
 MAX_CONTEXT_CHUNKS = 4
-SIMILARITY_THRESHOLD = 0.35   # calibrado para paraphrase-multilingual-MiniLM-L12-v2
+SIMILARITY_THRESHOLD = 0.22   # ajustado en producción — paraphrase-multilingual-MiniLM-L12-v2 produce scores más bajos que en desarrollo
 
 # Número máximo de reglas por tipo que se inyectan en el prompt
 # (evita que el bloque de reglas supere el num_ctx del modelo)
