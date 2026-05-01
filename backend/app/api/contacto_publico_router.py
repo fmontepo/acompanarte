@@ -18,6 +18,7 @@ from app.db.session import get_db
 from app.models.contacto_publico import ContactoPublico
 from app.models.terapeuta import Terapeuta
 from app.models.usuario import Usuario
+from app.models.rol import Rol
 
 router = APIRouter(
     prefix="/admin/contactos",
@@ -211,28 +212,72 @@ async def listar_terapeutas_internos(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Devuelve los terapeutas internos (institucional=True o tipo_acceso=institucional)
-    activos y validados. Se usa para poblar el selector de derivación.
+    Devuelve los terapeutas internos activos disponibles para derivación.
+    Incluye:
+    1. Usuarios con rol 'ter-int' que tienen perfil Terapeuta validado/activo.
+    2. Usuarios con rol 'ter-int' activos que aún no tienen perfil Terapeuta
+       (recién creados por el admin) — se muestran con datos básicos.
     """
+    # 1. Terapeutas con perfil completo (tabla terapeutas)
     result = await db.execute(
         select(Terapeuta)
         .options(joinedload(Terapeuta.usuario))
         .where(Terapeuta.activo == True)
-        .where(Terapeuta.validado == True)
         .order_by(Terapeuta.creado_en.asc())
     )
     terapeutas = result.unique().scalars().all()
 
     lista = []
+    ids_con_perfil = set()
     for t in terapeutas:
         u = t.usuario
-        if not u:
+        if not u or not u.activo:
             continue
+        ids_con_perfil.add(str(u.id))
         lista.append({
             "id": str(t.id),
             "nombre_completo": f"{u.nombre or ''} {u.apellido or ''}".strip() or u.email,
-            "profesion": t.profesion,
+            "profesion": t.profesion or "Terapeuta",
             "especialidad": t.especialidad,
             "email": u.email,
         })
+
+    # 2. Usuarios ter-int activos sin perfil terapeuta todavía
+    # Se identifican por el rol 'ter-int' y no estar en ids_con_perfil
+    usuarios_result = await db.execute(
+        select(Usuario)
+        .join(Rol, Usuario.rol_id == Rol.id)
+        .where(Rol.key == "ter-int")
+        .where(Usuario.activo == True)
+        .order_by(Usuario.nombre)
+    )
+    usuarios_terint = usuarios_result.scalars().all()
+
+    for u in usuarios_terint:
+        if str(u.id) in ids_con_perfil:
+            continue  # ya está listado vía su perfil Terapeuta
+        # Sin perfil todavía — se usa el usuario_id como ID temporal para UI
+        # El admin podrá derivar pero la FK requiere terapeuta.id → auto-crear perfil básico
+        import uuid as _uuid
+        perfil = Terapeuta(
+            id=_uuid.uuid4(),
+            usuario_id=u.id,
+            matricula=f"AUTO-{str(u.id)[:8].upper()}",
+            profesion="Terapeuta",
+            tipo_acceso="institucional",
+            institucional=True,
+            validado=True,
+            activo=True,
+        )
+        db.add(perfil)
+        await db.commit()
+        await db.refresh(perfil)
+        lista.append({
+            "id": str(perfil.id),
+            "nombre_completo": f"{u.nombre or ''} {u.apellido or ''}".strip() or u.email,
+            "profesion": "Terapeuta",
+            "especialidad": None,
+            "email": u.email,
+        })
+
     return lista

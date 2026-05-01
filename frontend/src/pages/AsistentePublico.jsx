@@ -145,11 +145,8 @@ export default function AsistentePublico() {
             mensaje:   texto.trim(),
             respuesta: data.respuesta,
           }
-          // Pequeña pausa antes de mostrar la pregunta de contacto
-          setTimeout(() => {
-            agregarMensajeIA(MSG_CONTACTO)
-            setContactoFlujo('preguntando')
-          }, 800)
+          // Activar el banner de contacto sin agregar un segundo mensaje de IA
+          setContactoFlujo('preguntando')
         }
       } else {
         throw new Error(`HTTP ${res.status}`)
@@ -379,23 +376,38 @@ export default function AsistentePublico() {
             </div>
           )}
 
-          {/* ── Botones Sí / No (cuando la IA preguntó si quiere contacto) ── */}
+          {/* ── Banner de contacto (integrado, no como burbuja IA separada) ── */}
           {contactoFlujo === 'preguntando' && (
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14, paddingLeft: 38 }}>
-              <button
-                className="btn btn-p btn-sm"
-                onClick={responderSi}
-                style={{ fontSize: 13 }}
-              >
-                Sí, me gustaría ser contactado/a
-              </button>
-              <button
-                className="btn btn-g btn-sm"
-                onClick={responderNo}
-                style={{ fontSize: 13 }}
-              >
-                No, gracias
-              </button>
+            <div style={{
+              marginBottom: 14, paddingLeft: 38,
+            }}>
+              <div style={{
+                background: 'rgba(56,161,105,0.08)',
+                border: '1px solid rgba(56,161,105,0.3)',
+                borderRadius: '12px 12px 12px 2px',
+                padding: '12px 16px',
+              }}>
+                <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 10, lineHeight: 1.5 }}>
+                  🤝 Lo que describís puede requerir atención especializada.
+                  ¿Querés que te contacte un terapeuta de Acompañarte? Es <strong>gratuito</strong> y sin compromiso.
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    className="btn btn-sm"
+                    onClick={responderSi}
+                    style={{ fontSize: 12, background: 'var(--teal)', color: '#fff', border: 'none' }}
+                  >
+                    Sí, quiero que me contacten
+                  </button>
+                  <button
+                    className="btn btn-g btn-sm"
+                    onClick={responderNo}
+                    style={{ fontSize: 12 }}
+                  >
+                    No, gracias
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

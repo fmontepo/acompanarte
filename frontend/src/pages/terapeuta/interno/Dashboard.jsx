@@ -62,9 +62,6 @@ export default function TerIntDashboard() {
             {pacientes.length} pacientes a cargo · {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </div>
         </div>
-        <button className="btn btn-p btn-sm" onClick={() => navigate('/terapeuta/interno/registros')}>
-          + Nuevo registro
-        </button>
       </div>
 
       {/* KPIs */}

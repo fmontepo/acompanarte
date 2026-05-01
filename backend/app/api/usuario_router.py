@@ -14,6 +14,8 @@ from passlib.context import CryptContext
 from app.db.session import get_db
 from app.models.usuario import Usuario
 from app.models.rol import Rol
+from app.models.familiar import Familiar
+from app.models.terapeuta import Terapeuta
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
 from app.api.deps import CurrentUser, require_roles
 
@@ -59,6 +61,32 @@ async def crear_usuario(
         avatar_class={"familia":"av-tl","ter-int":"av-tl","ter-ext":"av-pp","admin":"av-gr"}.get(data.rol, "av-gr"),
     )
     db.add(nuevo)
+    await db.flush()  # obtener nuevo.id antes del commit
+
+    # ── Auto-crear perfil según rol ──────────────────────────────────────────
+    if data.rol == "familia":
+        # Crear perfil Familiar — no tiene campos requeridos adicionales
+        perfil_familiar = Familiar(
+            id=_uuid.uuid4(),
+            usuario_id=nuevo.id,
+            consentimiento_otorgado=False,
+        )
+        db.add(perfil_familiar)
+
+    elif data.rol == "ter-int":
+        # Crear perfil Terapeuta con datos mínimos — el terapeuta puede completar luego
+        perfil_terapeuta = Terapeuta(
+            id=_uuid.uuid4(),
+            usuario_id=nuevo.id,
+            matricula=f"PEND-{str(nuevo.id)[:8].upper()}",  # placeholder hasta que complete su perfil
+            profesion="Terapeuta",
+            tipo_acceso="institucional",
+            institucional=True,
+            validado=True,   # admin lo crea → se asume validado
+            activo=True,
+        )
+        db.add(perfil_terapeuta)
+
     await db.commit()
 
     result = await db.execute(select(Usuario).where(Usuario.id == nuevo.id))
@@ -102,7 +130,7 @@ async def obtener_usuario(
     db: AsyncSession = Depends(get_db),
 ):
     # Solo admin puede ver cualquier usuario; el resto solo se ve a sí mismo
-    if current_user.rol != "admin" and current_user.id != usuario_id:
+    if current_user.rol.key != "admin" and current_user.id != usuario_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tenés permiso para ver este usuario"
@@ -135,7 +163,7 @@ async def actualizar_usuario(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.rol != "admin" and current_user.id != usuario_id:
+    if current_user.rol.key != "admin" and current_user.id != usuario_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tenés permiso para modificar este usuario"

@@ -32,7 +32,7 @@ COLUMNAS = [
 ADMIN_NAV = [
     {"section": "Sistema", "items": [
         {"id": "admin-dash",      "icon": "home",       "label": "Panel de inicio"},
-        {"id": "admin-usuarios",  "icon": "users",      "label": "Terapeutas"},
+        {"id": "admin-usuarios",  "icon": "users",      "label": "Usuarios"},
         {"id": "admin-contactos", "icon": "mail",       "label": "Contactos TEA"},
         {"id": "admin-reglas",    "icon": "shield",     "label": "Reglas IA"},
         {"id": "admin-auditoria", "icon": "bar-chart",  "label": "Auditoría"},
