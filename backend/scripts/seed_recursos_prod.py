@@ -48,7 +48,7 @@ async def main():
     async with Session() as db:
         # Buscar el usuario admin para asignarlo como subidor/validador
         result = await db.execute(
-            select(Usuario).join(Usuario.rol_rel).where(
+            select(Usuario).where(
                 Usuario.activo == True
             ).limit(1)
         )
