@@ -12,6 +12,7 @@
 
 import re
 import os
+import logging
 import httpx
 from typing import Optional
 from uuid import UUID
@@ -191,7 +192,7 @@ async def buscar_contexto_rag(
 # ---------------------------------------------------------------------------
 # Paso 3: Construcción del prompt RAG
 # ---------------------------------------------------------------------------
-MAX_CHARS_POR_FUENTE = 800   # limitar contexto para no exceder el num_ctx del modelo
+MAX_CHARS_POR_FUENTE = 600   # limitar contexto — qwen2.5:3b tiene num_ctx 4096; 4 fuentes × 600 = 2400 chars seguros
 
 
 def construir_prompt(consulta: str, fuentes: list[dict], reglas: dict | None = None) -> str:
@@ -237,28 +238,59 @@ async def generar_respuesta_ollama(prompt: str) -> str:
     }
 
     try:
-        # Timeout extendido: llama3.1:8b puede tardar 2-3 min en la primera carga
+        # Timeout extendido: el modelo puede tardar varios minutos en la primera carga
         async with httpx.AsyncClient(timeout=300.0) as client:
             response = await client.post(url, json=payload)
             response.raise_for_status()
-            data = response.json()
-            return data.get("response", "").strip()
+
+            # Verificar body no vacío antes de parsear JSON
+            body = response.text.strip()
+            if not body:
+                logging.error(
+                    f"[Ollama] Body vacío (status {response.status_code}). "
+                    f"Prompt: {len(prompt)} chars"
+                )
+                return (
+                    "El modelo de IA no pudo generar una respuesta en este momento. "
+                    "Intentá de nuevo en unos segundos."
+                )
+
+            try:
+                data = response.json()
+            except Exception as json_err:
+                logging.error(
+                    f"[Ollama] JSON inválido: {json_err}. "
+                    f"Body (primeros 300 chars): {body[:300]}"
+                )
+                return (
+                    "El modelo de IA devolvió una respuesta inesperada. "
+                    "Intentá de nuevo en unos segundos."
+                )
+
+            texto = data.get("response", "").strip()
+            if not texto:
+                logging.warning(
+                    f"[Ollama] Campo 'response' vacío. Claves recibidas: {list(data.keys())}"
+                )
+                return (
+                    "El asistente no pudo generar una respuesta. "
+                    "Intentá de nuevo en unos segundos."
+                )
+
+            return texto
 
     except httpx.ConnectError:
         return (
             "El servicio de IA no está disponible en este momento. "
-            "Por favor, verificá que Ollama esté corriendo en Windows "
-            "y consultá directamente con tu terapeuta."
+            "Verificá que Ollama esté corriendo y consultá directamente con tu terapeuta."
         )
     except httpx.TimeoutException:
-        import logging
         logging.warning(f"[Ollama] Timeout después de 300s. Prompt length: {len(prompt)} chars")
         return (
             "La consulta tardó demasiado en procesarse. "
             "Intentá de nuevo en unos segundos."
         )
     except Exception as e:
-        import logging
         logging.error(f"[Ollama] Error inesperado: {type(e).__name__}: {e}")
         return (
             "No pude procesar tu consulta en este momento. "
