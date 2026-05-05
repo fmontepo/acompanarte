@@ -48,9 +48,6 @@ export default function TerExtDashboard() {
             {pacientes.length} pacientes asignados · {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </div>
         </div>
-        <button className="btn btn-p btn-sm" onClick={() => navigate('/terapeuta/externo/registros')}>
-          + Nuevo registro
-        </button>
       </div>
 
       {/* Acceso limitado - info */}

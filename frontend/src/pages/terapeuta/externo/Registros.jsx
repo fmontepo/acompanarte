@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 
-const PACIENTES_DEFAULT = ['Roberto Méndez', 'Elena Fernández']
 const TIPOS = ['Seguimiento', 'Evaluación', 'Observación', 'Nota de evolución']
-
-const MOCK = [
-  { id: 1, paciente: 'Roberto Méndez',  av: 'RM', avClass: 'av-tl', tipo: 'Seguimiento',      fecha: '2026-04-09T10:15:00', nota: 'Visita domiciliaria. Paciente orientado en tiempo y lugar. Interactuó bien con la familia presente. Recomienda continuar con rutinas establecidas.', estado: 'completado' },
-  { id: 2, paciente: 'Elena Fernández', av: 'EF', avClass: 'av-pp', tipo: 'Evaluación',        fecha: '2026-04-06T14:30:00', nota: 'Evaluación cognitiva de seguimiento. MMSE: 22/30 (estable respecto al mes anterior). Lenguaje conservado, memoria episódica con leve deterioro.', estado: 'completado' },
-  { id: 3, paciente: 'Roberto Méndez',  av: 'RM', avClass: 'av-tl', tipo: 'Nota de evolución', fecha: '2026-03-28T11:00:00', nota: 'Progreso alentador en actividades físicas. Completa la caminata matutina con regularidad según reporte familiar. Se ajusta plan para próximo mes.', estado: 'completado' },
-]
 
 const ESTADO_META = {
   completado: { label: 'Completado', chipClass: 'ch-teal' },
@@ -81,7 +74,7 @@ function ModalNuevo({ onClose, onSave, pacientes }) {
 export default function TerExtRegistros() {
   const { authFetch } = useAuth()
   const [registros, setRegistros] = useState([])
-  const [pacientes, setPacientes] = useState(PACIENTES_DEFAULT.map((n, i) => ({ id: i+1, nombre: n })))
+  const [pacientes, setPacientes] = useState([])
   const [loading, setLoading]     = useState(true)
   const [modal, setModal]         = useState(false)
   const [toast, setToast]         = useState({ msg: '', ok: true })
@@ -123,7 +116,7 @@ export default function TerExtRegistros() {
           const norm = Array.isArray(data) ? data.map(r => normalizeRegistro(r, pacsMap)) : []
           setRegistros(norm)
         } else { setRegistros([]) }
-      } catch { setRegistros(MOCK) }  // error de red → mock
+      } catch { setRegistros([]) }  // error de red → lista vacía
       finally { setLoading(false) }
     }
     cargar()
@@ -192,9 +185,9 @@ export default function TerExtRegistros() {
         <div style={{ padding: 48, textAlign: 'center', color: 'var(--text3)' }}>
           <div style={{ fontSize: 28, marginBottom: 8 }}>📝</div>
           <div style={{ fontWeight: 600, color: 'var(--text)' }}>Sin registros aún</div>
-          <button className="btn btn-p btn-sm" style={{ marginTop: 12 }} onClick={() => setModal(true)}>
-            Crear primer registro
-          </button>
+          <div className="ts tm" style={{ marginTop: 6 }}>
+            Usá el botón <strong>+ Nuevo registro</strong> para agregar tu primera observación.
+          </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
