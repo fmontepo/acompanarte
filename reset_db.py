@@ -53,15 +53,119 @@ USO
 import argparse
 import os
 import sys
+import subprocess
+import importlib
 
-# ── Dependencia: psycopg2 ─────────────────────────────────────────────────────
-try:
-    import psycopg2
-    from psycopg2 import sql
-except ImportError:
-    print("❌  psycopg2 no está instalado.")
-    print("    Instalalo con:  pip install psycopg2-binary")
-    sys.exit(1)
+# ─────────────────────────────────────────────────────────────────────────────
+# VERIFICACIÓN Y AUTO-INSTALACIÓN DE DEPENDENCIAS
+# Se ejecuta antes de cualquier otra cosa, usando solo stdlib.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Versión mínima de Python requerida
+_PYTHON_MIN = (3, 8)
+
+# Módulos externos requeridos: (nombre_import, paquete_pip)
+_DEPENDENCIAS = [
+    ("psycopg2", "psycopg2-binary"),
+]
+
+
+def _verificar_python() -> None:
+    """Valida que la versión de Python sea suficiente."""
+    version_actual = sys.version_info[:2]
+    if version_actual < _PYTHON_MIN:
+        print(f"❌  Python {_PYTHON_MIN[0]}.{_PYTHON_MIN[1]} o superior es requerido.")
+        print(f"    Versión actual: {sys.version.split()[0]}")
+        print(f"    Descargá la última versión en: https://www.python.org/downloads/")
+        sys.exit(1)
+
+
+def _instalar_modulo(paquete_pip: str) -> bool:
+    """
+    Intenta instalar un paquete con pip.
+    Retorna True si la instalación fue exitosa, False si falló.
+    """
+    intentos = [
+        [sys.executable, "-m", "pip", "install", paquete_pip],
+        [sys.executable, "-m", "pip", "install", "--break-system-packages", paquete_pip],
+        [sys.executable, "-m", "pip", "install", "--user", paquete_pip],
+    ]
+    for cmd in intentos:
+        try:
+            resultado = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+            )
+            if resultado.returncode == 0:
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _verificar_dependencias() -> None:
+    """
+    Verifica que todos los módulos requeridos estén disponibles.
+    Si alguno falta, lo instala automáticamente con pip e informa cada paso.
+    Detiene el script si alguna instalación falla.
+    """
+    print("\n🔍  Verificando dependencias…\n")
+
+    faltantes = []
+    for nombre_import, paquete_pip in _DEPENDENCIAS:
+        try:
+            importlib.import_module(nombre_import)
+            print(f"  ✓  {nombre_import:<20} — encontrado")
+        except ImportError:
+            print(f"  ✗  {nombre_import:<20} — no encontrado")
+            faltantes.append((nombre_import, paquete_pip))
+
+    if not faltantes:
+        print("\n  Todas las dependencias están disponibles.")
+        return
+
+    print()
+    instalados_ok = []
+    instalados_error = []
+
+    for nombre_import, paquete_pip in faltantes:
+        print(f"  ⚠️   No se encuentra '{nombre_import}'.")
+        print(f"       Se está instalando '{paquete_pip}', aguarde…")
+        exito = _instalar_modulo(paquete_pip)
+        if exito:
+            # Recargar el módulo recién instalado
+            try:
+                importlib.import_module(nombre_import)
+                print(f"  ✓   '{paquete_pip}' instalado correctamente.\n")
+                instalados_ok.append(nombre_import)
+            except ImportError:
+                print(f"  ✗   '{paquete_pip}' se instaló pero no se pudo importar.\n")
+                instalados_error.append(nombre_import)
+        else:
+            print(f"  ✗   No se pudo instalar '{paquete_pip}'.")
+            print(f"       Intentá manualmente:  pip install {paquete_pip}\n")
+            instalados_error.append(nombre_import)
+
+    if instalados_error:
+        print("❌  No se pudieron instalar las siguientes dependencias:")
+        for m in instalados_error:
+            print(f"    • {m}")
+        print()
+        print("Por favor instalá los módulos faltantes manualmente y volvé a ejecutar el script.")
+        sys.exit(1)
+
+    if instalados_ok:
+        print(f"  ✅  {len(instalados_ok)} dependencia(s) instalada(s) correctamente.")
+
+
+# ── Ejecutar verificaciones antes de cualquier import externo ─────────────────
+_verificar_python()
+_verificar_dependencias()
+
+# ── Ahora sí es seguro importar los módulos externos ──────────────────────────
+import psycopg2          # noqa: E402
+from psycopg2 import sql  # noqa: E402
 
 
 # ─────────────────────────────────────────────────────────────────────────────
