@@ -5,8 +5,11 @@
 from sqlalchemy import Column, String, Boolean, Text, DateTime, ForeignKey, func, Index, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from pgvector.sqlalchemy import Vector
 import uuid
 from app.db.base import Base
+
+EMBEDDING_DIM = 384
 
 
 class ActividadFamiliar(Base):
@@ -56,6 +59,19 @@ class ActividadFamiliar(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    # ── Embedding RAG clínico ────────────────────────────────────────────────
+    # Generado por el batch scheduler sobre titulo + objetivo + descripcion
+    embedding = Column(
+        Vector(EMBEDDING_DIM),
+        nullable=True,
+        comment=f"Vector {EMBEDDING_DIM}d para RAG clínico interno",
+    )
+    embedding_hash = Column(
+        String(64),
+        nullable=True,
+        comment="SHA-256 del texto fuente; permite skip si no hubo cambios",
     )
 
     __table_args__ = (

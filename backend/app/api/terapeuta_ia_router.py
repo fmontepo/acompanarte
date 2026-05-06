@@ -27,7 +27,7 @@ from app.models.progresoActividad import ProgresoActividad
 router = APIRouter(
     prefix="/ia/terapeuta",
     tags=["IA — Terapeuta"],
-    dependencies=[Depends(require_roles("terapeuta", "terapeuta_externo", "admin"))],
+    dependencies=[Depends(require_roles("ter-int", "admin"))],
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -277,6 +277,7 @@ async def chat_terapeuta(
             anonimizar_pii,
             cargar_reglas,
             buscar_contexto_rag,
+            buscar_contexto_rag_clinico,
             generar_respuesta_ollama,
             aplicar_filtro_diagnostico,
         )
@@ -286,21 +287,29 @@ async def chat_terapeuta(
         # Cargar reglas activas para contexto terapeuta (+ global)
         reglas = await cargar_reglas(db, contexto="terapeuta")
 
-        # Construir contexto clínico con datos reales de los pacientes
+        # Construir contexto clínico estructurado (SQL) con datos reales
         pacientes = await _pacientes_del_terapeuta(db, terapeuta.id)
         contexto_clinico = await _construir_contexto_clinico(db, terapeuta.id, pacientes)
+        pac_ids = [p.id for p in pacientes]
 
-        # Buscar en base de conocimiento (recursos profesionales)
-        fuentes = await buscar_contexto_rag(db, mensaje_anonimo)
+        # RAG bibliográfico — recursos profesionales validados
+        fuentes_biblio = await buscar_contexto_rag(db, mensaje_anonimo)
 
-        # Construir prompt especializado para terapeuta
-        prompt = _construir_prompt_terapeuta(mensaje_anonimo, contexto_clinico, fuentes, reglas)
+        # RAG clínico — embeddings de registros, actividades y progresos
+        # Acotado a los pacientes propios del terapeuta
+        fuentes_clinicas = await buscar_contexto_rag_clinico(db, mensaje_anonimo, pac_ids)
+
+        # Construir prompt con dual RAG
+        prompt = _construir_prompt_terapeuta(
+            mensaje_anonimo, contexto_clinico,
+            fuentes_biblio, fuentes_clinicas, reglas,
+        )
         respuesta = await generar_respuesta_ollama(prompt)
         respuesta, _ = aplicar_filtro_diagnostico(respuesta)
 
         return ChatTerapeutaResponse(
             respuesta=respuesta,
-            fuentes=[{"titulo": f["titulo"], "score": f["score"]} for f in fuentes],
+            fuentes=[{"titulo": f["titulo"], "score": f["score"]} for f in fuentes_biblio],
         )
 
     except Exception as e:
@@ -316,6 +325,28 @@ async def chat_terapeuta(
             ),
             fuentes=[],
         )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# POST /api/v1/ia/terapeuta/batch/embedding — trigger manual del batch
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.post(
+    "/batch/embedding",
+    summary="Ejecutar batch de embeddings clínicos manualmente",
+    description=(
+        "Inicia el job de generación de embeddings sobre registros, actividades "
+        "y progresos. Solo procesa registros con cambios desde el último run. "
+        "Operación potencialmente lenta (depende del volumen de datos y el modelo)."
+    ),
+)
+async def trigger_batch_embedding(current_user: CurrentUser):
+    from app.services.scheduler import trigger_manual
+    stats = await trigger_manual()
+    return {
+        "mensaje": "Batch de embeddings clínicos completado.",
+        "stats": stats,
+    }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -410,14 +441,27 @@ async def _construir_contexto_clinico(
 def _construir_prompt_terapeuta(
     consulta: str,
     contexto_clinico: str,
-    fuentes: list[dict],
+    fuentes_biblio: list[dict],
+    fuentes_clinicas: list[dict] | None = None,
     reglas: dict | None = None,
     max_chars_fuente: int = 600,
 ) -> str:
     from app.services.ia_service import _bloque_reglas
+
+    # Bloque bibliográfico
     biblio = "\n\n".join(
-        f"[{f['titulo']}]\n{f['contenido'][:max_chars_fuente]}" for f in fuentes
-    ) if fuentes else "No se encontró bibliografía relevante para esta consulta."
+        f"[{f['titulo']}]\n{f['contenido'][:max_chars_fuente]}" for f in fuentes_biblio
+    ) if fuentes_biblio else "No se encontró bibliografía relevante para esta consulta."
+
+    # Bloque RAG clínico — fragmentos semánticamente cercanos a la consulta
+    ETIQUETAS = {"registro": "Nota clínica", "actividad": "Actividad", "progreso": "Sesión registrada"}
+    if fuentes_clinicas:
+        rag_clinico = "\n\n".join(
+            f"[{ETIQUETAS.get(f['fuente'], f['fuente'])}]\n{f['texto']}"
+            for f in fuentes_clinicas
+        )
+    else:
+        rag_clinico = "No se encontraron fragmentos clínicos semánticamente relevantes."
 
     bloque_reglas = _bloque_reglas(reglas or {})
     reglas_section = f"\n{bloque_reglas}\n" if bloque_reglas else ""
@@ -428,9 +472,13 @@ Tenés acceso al historial anonimizado de los pacientes del terapeuta.
 Respondé con precisión clínica, en español profesional.
 NO emitás diagnósticos definitivos — podés señalar patrones y sugerir evaluaciones.
 {reglas_section}
---- CONTEXTO CLÍNICO DE LOS PACIENTES ---
+--- CONTEXTO CLÍNICO ESTRUCTURADO (TODOS LOS PACIENTES) ---
 {contexto_clinico}
---- FIN CONTEXTO ---
+--- FIN CONTEXTO ESTRUCTURADO ---
+
+--- FRAGMENTOS CLÍNICOS RELEVANTES A LA CONSULTA (RAG) ---
+{rag_clinico}
+--- FIN FRAGMENTOS CLÍNICOS ---
 
 --- BIBLIOGRAFÍA PROFESIONAL RELEVANTE ---
 {biblio}

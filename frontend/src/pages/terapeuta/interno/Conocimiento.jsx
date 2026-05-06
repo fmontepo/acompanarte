@@ -276,13 +276,20 @@ export default function TerIntConocimiento() {
   async function handleValidar(id, e) {
     e.stopPropagation()
     setValidando(id)
+    const recurso = articulos.find(a => a.id === id)
+    const tieneContenido = !!(recurso?.contenido_texto)
     try {
       const res = await authFetch(`/recursos/${id}/validar`, { method: 'POST' })
       if (res.ok) {
         setArticulos(prev => prev.map(a =>
           a.id === id ? { ...a, validado: true, destacado: true } : a
         ))
-        showToast('Recurso validado. Ahora está disponible para el Asistente IA.')
+        // Si el recurso tenía texto, el embedding se genera en background (~30 s)
+        showToast(
+          tieneContenido
+            ? 'Recurso validado. El embedding para el Asistente IA se está generando en segundo plano.'
+            : 'Recurso validado y disponible para el equipo.'
+        )
       } else {
         const err = await res.json().catch(() => ({}))
         showToast(err?.detail ?? 'Error al validar el recurso.', false)
@@ -436,7 +443,7 @@ export default function TerIntConocimiento() {
                           disabled={validando === a.id}
                           onClick={e => handleValidar(a.id, e)}
                           title="Marcar como validado para que el Asistente IA lo use">
-                          {validando === a.id ? '…' : 'Validar'}
+                          {validando === a.id ? 'Validando…' : 'Validar'}
                         </button>
                       )}
                       {/* Botón + — expande la descripción */}

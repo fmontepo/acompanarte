@@ -10,6 +10,7 @@
 #   4. Registrar cada interacción en auditoría
 #   5. Generar alerta si el mensaje contiene señales sensibles
 
+import asyncio
 import re
 import os
 import logging
@@ -17,11 +18,16 @@ import httpx
 from typing import Optional
 from uuid import UUID
 
+log = logging.getLogger(__name__)
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sentence_transformers import SentenceTransformer
 
 from app.models.recursoProfesional import RecursoProfesional
+from app.models.registroSeguimiento import RegistroSeguimiento
+from app.models.actividadFamiliar import ActividadFamiliar
+from app.models.progresoActividad import ProgresoActividad
 from app.models.ia import SesionIA, MensajeIA
 from app.models.alerta import Alerta
 from app.models.regla_ia import ReglaIA
@@ -161,7 +167,8 @@ async def buscar_contexto_rag(
     top_k: int = MAX_CONTEXT_CHUNKS,
 ) -> list[dict]:
     model = get_embedding_model()
-    embedding = model.encode(consulta).tolist()
+    embedding_vec = await asyncio.to_thread(model.encode, consulta)
+    embedding = embedding_vec.tolist()
 
     result = await db.execute(
         select(
@@ -187,6 +194,125 @@ async def buscar_contexto_rag(
                 "score": round(score, 4),
             })
     return fuentes
+
+
+# ---------------------------------------------------------------------------
+# RAG clínico interno — búsqueda semántica sobre datos de pacientes
+# Busca en las 3 tablas clínicas acotado a los pacientes del terapeuta.
+# Se ejecuta SOLO en el chat del terapeuta interno (no en el chat familiar).
+# ---------------------------------------------------------------------------
+
+CLINICAL_SIMILARITY_THRESHOLD = 0.30   # umbral más permisivo que el bibliográfico
+MAX_CLINICAL_CHUNKS = 6                 # hasta 2 fragmentos por tabla
+
+
+async def buscar_contexto_rag_clinico(
+    db: AsyncSession,
+    consulta: str,
+    pacientes_ids: list,
+    top_k: int = MAX_CLINICAL_CHUNKS,
+) -> list[dict]:
+    """
+    Busca fragmentos clínicos relevantes en las 3 tablas embedeadas,
+    acotados a los pacientes asignados al terapeuta.
+    Retorna lista unificada ordenada por score descendente.
+    """
+    if not pacientes_ids:
+        return []
+
+    model = get_embedding_model()
+    embedding = await asyncio.to_thread(model.encode, consulta)
+    vec = embedding.tolist()
+
+    resultados: list[dict] = []
+
+    # ── 1. Registros de seguimiento ──────────────────────────────────────────
+    try:
+        res = await db.execute(
+            select(
+                RegistroSeguimiento,
+                RegistroSeguimiento.embedding.cosine_distance(vec).label("dist"),
+            )
+            .where(RegistroSeguimiento.paciente_id.in_(pacientes_ids))
+            .where(RegistroSeguimiento.embedding.is_not(None))
+            .order_by("dist")
+            .limit(top_k)
+        )
+        for r, dist in res.all():
+            score = 1 - dist
+            if score >= CLINICAL_SIMILARITY_THRESHOLD:
+                contenido = f"[{r.tipo.capitalize()}] {r.fecha_registro}\n{(r.contenido_enc or '')[:400]}"
+                resultados.append({
+                    "fuente": "registro",
+                    "paciente_id": str(r.paciente_id),
+                    "texto": contenido,
+                    "score": round(score, 4),
+                })
+    except Exception:
+        log.exception("[RAG clínico] Error buscando en registros_seguimiento")
+
+    # ── 2. Actividades familiares ────────────────────────────────────────────
+    try:
+        res = await db.execute(
+            select(
+                ActividadFamiliar,
+                ActividadFamiliar.embedding.cosine_distance(vec).label("dist"),
+            )
+            .where(ActividadFamiliar.paciente_id.in_(pacientes_ids))
+            .where(ActividadFamiliar.embedding.is_not(None))
+            .order_by("dist")
+            .limit(top_k)
+        )
+        for a, dist in res.all():
+            score = 1 - dist
+            if score >= CLINICAL_SIMILARITY_THRESHOLD:
+                partes = [f"Actividad: {a.titulo}"]
+                if a.objetivo:
+                    partes.append(f"Objetivo: {a.objetivo}")
+                if a.descripcion:
+                    partes.append(a.descripcion[:300])
+                resultados.append({
+                    "fuente": "actividad",
+                    "paciente_id": str(a.paciente_id),
+                    "texto": "\n".join(partes),
+                    "score": round(score, 4),
+                })
+    except Exception:
+        log.exception("[RAG clínico] Error buscando en actividades_familiar")
+
+    # ── 3. Progresos de actividad ────────────────────────────────────────────
+    try:
+        res = await db.execute(
+            select(
+                ProgresoActividad,
+                ProgresoActividad.embedding.cosine_distance(vec).label("dist"),
+            )
+            .join(ActividadFamiliar, ProgresoActividad.actividad_id == ActividadFamiliar.id)
+            .where(ActividadFamiliar.paciente_id.in_(pacientes_ids))
+            .where(ProgresoActividad.embedding.is_not(None))
+            .order_by("dist")
+            .limit(top_k)
+        )
+        for p, dist in res.all():
+            score = 1 - dist
+            if score >= CLINICAL_SIMILARITY_THRESHOLD:
+                resultado = "completa" if p.es_completada else f"parcial ({p.etapas_completadas or 0} etapas)"
+                satisfaccion = f" · Satisfacción {p.nivel_satisfaccion}/5" if p.nivel_satisfaccion else ""
+                texto = f"Sesión {resultado}{satisfaccion}"
+                if p.observacion:
+                    texto += f"\n{p.observacion[:300]}"
+                resultados.append({
+                    "fuente": "progreso",
+                    "paciente_id": str(p.actividad.paciente_id) if p.actividad else "",
+                    "texto": texto,
+                    "score": round(score, 4),
+                })
+    except Exception:
+        log.exception("[RAG clínico] Error buscando en progreso_actividad")
+
+    # Ordenar por score descendente y devolver los mejores
+    resultados.sort(key=lambda x: x["score"], reverse=True)
+    return resultados[:top_k]
 
 
 # ---------------------------------------------------------------------------

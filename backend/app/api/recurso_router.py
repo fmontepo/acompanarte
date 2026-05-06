@@ -3,20 +3,53 @@
 # Flujo: terapeuta sube → admin/terapeuta senior valida → RAG lo indexa
 # Solo recursos con validado=True alimentan el sistema RAG
 
+import asyncio
+import logging
 from typing import List
 from uuid import UUID
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.db.session import get_db
+from app.db.session import get_db, AsyncSessionLocal
 from app.models.recursoProfesional import RecursoProfesional
 from app.schemas.recurso_profesional import RecursoCreate, RecursoRead
 from app.api.deps import CurrentUser, require_roles
 
+log = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/recursos", tags=["Recursos profesionales"])
+
+
+# ---------------------------------------------------------------------------
+# Background task: genera el embedding RAG después de validar el recurso.
+# Corre en un thread separado para no bloquear el event loop ni la respuesta
+# HTTP. Abre su propia sesión de DB (la del request ya está cerrada).
+# ---------------------------------------------------------------------------
+async def _generar_embedding_background(recurso_id: UUID, texto_completo: str) -> None:
+    log.info("[Embedding] Iniciando para recurso %s", recurso_id)
+    try:
+        from app.services.ia_service import get_embedding_model
+        model = get_embedding_model()
+        # encode() es sincrónico — ejecutar en thread pool para no bloquear
+        embedding = await asyncio.to_thread(model.encode, texto_completo)
+        vector = embedding.tolist()
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(RecursoProfesional).where(RecursoProfesional.id == recurso_id)
+            )
+            recurso = result.scalar_one_or_none()
+            if recurso:
+                recurso.embedding = vector
+                await db.commit()
+                log.info("[Embedding] Guardado correctamente para recurso %s", recurso_id)
+            else:
+                log.warning("[Embedding] Recurso %s no encontrado al guardar embedding", recurso_id)
+    except Exception:
+        log.exception("[Embedding] Error al generar embedding para recurso %s", recurso_id)
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +143,7 @@ async def obtener_recurso(
 )
 async def validar_recurso(
     recurso_id: UUID,
+    background_tasks: BackgroundTasks,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
@@ -134,25 +168,21 @@ async def validar_recurso(
     recurso.validado_por = current_user.id
     recurso.validado_en = datetime.now(timezone.utc)
 
-    # Generar embedding pgvector a partir del contenido de texto
-    # El embedding alimenta el pipeline RAG del Asistente IA
-    if recurso.contenido_texto:
-        try:
-            from app.services.ia_service import get_embedding_model
-            model = get_embedding_model()
-            # Combinar título + descripción + contenido para mayor riqueza semántica
-            partes = [recurso.titulo]
-            if recurso.descripcion:
-                partes.append(recurso.descripcion)
-            partes.append(recurso.contenido_texto)
-            texto_completo = "\n\n".join(partes)
-            recurso.embedding = model.encode(texto_completo).tolist()
-        except Exception:
-            # No bloquear la validación si el embedding falla (Ollama no disponible)
-            pass
-
     await db.commit()
     await db.refresh(recurso)
+
+    # Encolar generación de embedding como tarea en background.
+    # La respuesta HTTP se envía de inmediato; el embedding se genera en paralelo
+    # (~15-30 s) sin bloquear al usuario ni al event loop.
+    if recurso.contenido_texto:
+        partes = [recurso.titulo]
+        if recurso.descripcion:
+            partes.append(recurso.descripcion)
+        partes.append(recurso.contenido_texto)
+        texto_completo = "\n\n".join(partes)
+        background_tasks.add_task(_generar_embedding_background, recurso.id, texto_completo)
+        log.info("[Validar] Embedding para recurso %s encolado en background", recurso.id)
+
     return recurso
 
 

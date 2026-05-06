@@ -36,6 +36,7 @@ from app.api.contacto_publico_router import router as contacto_publico_router
 from app.api.contacto_publico_router import terapeutas_router as contacto_terapeutas_router
 from app.api.regla_ia_router import router as regla_ia_router
 from app.api.terapeuta_ia_router import router as terapeuta_ia_router
+from app.services.scheduler import setup_scheduler, shutdown_scheduler
 
 
 # ---------------------------------------------------------------------------
@@ -263,6 +264,32 @@ async def _migrate():
             "ALTER TABLE progreso_actividad ADD COLUMN IF NOT EXISTS "
             "etapas_completadas INTEGER"
         ))
+        # v4: embeddings clínicos para RAG interno del terapeuta
+        # Columnas en las 3 tablas clínicas + índices HNSW para búsqueda vectorial
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        for tabla in ("registros_seguimiento", "actividades_familiar", "progreso_actividad"):
+            await conn.execute(text(
+                f"ALTER TABLE {tabla} ADD COLUMN IF NOT EXISTS embedding vector(384)"
+            ))
+            await conn.execute(text(
+                f"ALTER TABLE {tabla} ADD COLUMN IF NOT EXISTS embedding_hash VARCHAR(64)"
+            ))
+        # Índices HNSW — eficientes para búsqueda aproximada de vecinos más cercanos
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_emb_registro "
+            "ON registros_seguimiento USING hnsw (embedding vector_cosine_ops) "
+            "WHERE embedding IS NOT NULL"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_emb_actividad "
+            "ON actividades_familiar USING hnsw (embedding vector_cosine_ops) "
+            "WHERE embedding IS NOT NULL"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_emb_progreso "
+            "ON progreso_actividad USING hnsw (embedding vector_cosine_ops) "
+            "WHERE embedding IS NOT NULL"
+        ))
 
 
 @asynccontextmanager
@@ -277,8 +304,11 @@ async def lifespan(app: FastAPI):
     await _seed_roles()
     await _seed_reglas_ia()
     await _seed_parentescos()
+    # Iniciar scheduler de embeddings clínicos
+    setup_scheduler()
     yield
-    # Shutdown: liberar el pool de conexiones
+    # Shutdown: detener scheduler y liberar el pool de conexiones
+    shutdown_scheduler()
     await engine.dispose()
 
 

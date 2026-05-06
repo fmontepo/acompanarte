@@ -2,11 +2,14 @@
 # Registro de progreso de una actividad terapéutica realizada en casa
 # El familiar completa este registro — el terapeuta lo revisa
 
-from sqlalchemy import Column, DateTime, Text, ForeignKey, Integer, Boolean, func, Index
+from sqlalchemy import Column, DateTime, Text, ForeignKey, Integer, Boolean, String, func, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
+from pgvector.sqlalchemy import Vector
 import uuid
 from app.db.base import Base
+
+EMBEDDING_DIM = 384
 
 
 class ProgresoActividad(Base):
@@ -63,6 +66,19 @@ class ProgresoActividad(Base):
         nullable=False,
         server_default=func.now(),
         index=True,
+    )
+
+    # ── Embedding RAG clínico ────────────────────────────────────────────────
+    # Solo se genera si el registro tiene observacion (campo de texto libre)
+    embedding = Column(
+        Vector(EMBEDDING_DIM),
+        nullable=True,
+        comment=f"Vector {EMBEDDING_DIM}d para RAG clínico interno",
+    )
+    embedding_hash = Column(
+        String(64),
+        nullable=True,
+        comment="SHA-256 del texto fuente; permite skip si no hubo cambios",
     )
 
     __table_args__ = (

@@ -37,3 +37,6 @@ cryptography==44.0.0
 # --- Validación ---
 pydantic[email]==2.10.3
 pydantic-settings==2.7.0
+
+# --- Scheduler — batch de embeddings clínicos ---
+APScheduler==3.10.4
