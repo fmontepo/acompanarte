@@ -139,7 +139,11 @@ export default function TerIntRegistros() {
         if (resPacs.status === 'fulfilled' && resPacs.value.ok) {
           const pacs = await resPacs.value.json()
           if (Array.isArray(pacs) && pacs.length > 0) {
-            setPacientes(pacs.map(p => ({ id: p.id, nombre: p.nombre_enc || 'Paciente', av: (p.nombre_enc||'P').slice(0,2).toUpperCase(), avClass: 'av-tl' })))
+            setPacientes(pacs.map(p => {
+              // El backend devuelve nombre y apellido ya descifrados (no nombre_enc)
+              const nom = [p.nombre, p.apellido].filter(Boolean).join(' ') || 'Paciente'
+              return { id: p.id, nombre: nom, av: nom.slice(0, 2).toUpperCase(), avClass: 'av-tl' }
+            }))
             pacs.forEach(p => { pacsMap[p.id] = p })
           }
         }

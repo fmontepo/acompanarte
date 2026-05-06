@@ -43,8 +43,11 @@ import AsistentePublico from '../pages/AsistentePublico'
 // Verifica: 1) sesión activa  2) rol permitido (si se especifica)
 // ─────────────────────────────────────────────────────────────
 function ProtectedRoute({ allowedRoles }) {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const location = useLocation()
+
+  // Esperar a que AuthContext termine de validar el token almacenado
+  if (isLoading) return null
 
   if (!user) {
     // Sin sesión → al login, guardando la ruta intentada para redirect post-login
@@ -65,7 +68,10 @@ function ProtectedRoute({ allowedRoles }) {
 // Ya no hay ningún mapeo de roles en el frontend.
 // ─────────────────────────────────────────────────────────────
 function PublicRoute() {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
+
+  // Esperar a que AuthContext termine de validar el token almacenado
+  if (isLoading) return null
 
   if (user) {
     // default_path viene directamente del backend vía el JWT/login response

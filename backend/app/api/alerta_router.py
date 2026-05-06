@@ -10,7 +10,6 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-
 from app.db.session import get_db
 from app.models.alerta import Alerta
 from app.schemas.alerta import AlertaRead, AlertaResolver
@@ -19,12 +18,39 @@ from app.api.deps import CurrentUser, require_roles
 router = APIRouter(prefix="/alertas", tags=["Alertas"])
 
 
+def _alerta_dict(a: Alerta) -> dict:
+    """Serializa una alerta enriquecida con nombre del paciente vía sesion→paciente."""
+    pac = None
+    if a.sesion and a.sesion.paciente:
+        pac = a.sesion.paciente
+
+    nombre_pac = ""
+    if pac:
+        nombre_pac = " ".join(filter(None, [pac.nombre_enc, pac.apellido_enc])) or "Paciente"
+
+    return {
+        "id":               str(a.id),
+        "sesion_id":        str(a.sesion_id),
+        "mensaje_id":       str(a.mensaje_id) if a.mensaje_id else None,
+        "revisada_por":     str(a.revisada_por) if a.revisada_por else None,
+        "tipo":             a.tipo,
+        "severidad":        a.severidad,
+        "descripcion":      a.descripcion,
+        "resuelta":         a.resuelta,
+        "nota_resolucion":  a.nota_resolucion,
+        "creada_en":        a.creada_en.isoformat() if a.creada_en else None,
+        "resuelta_en":      a.resuelta_en.isoformat() if a.resuelta_en else None,
+        # Campos enriquecidos para el frontend
+        "paciente":         nombre_pac or "Paciente",
+        "paciente_id":      str(pac.id) if pac else None,
+    }
+
+
 # ---------------------------------------------------------------------------
 # GET /api/v1/alertas — listar alertas pendientes (terapeuta/admin)
 # ---------------------------------------------------------------------------
 @router.get(
     "/",
-    response_model=List[AlertaRead],
     dependencies=[Depends(require_roles("admin", "ter-int", "ter-ext"))],
     summary="Listar alertas pendientes",
 )
@@ -34,6 +60,8 @@ async def listar_alertas(
     skip: int = 0,
     limit: int = 50,
 ):
+    # Alerta.sesion y SesionIA.paciente ya tienen lazy="selectin" en los modelos,
+    # por lo que SQLAlchemy los carga automáticamente al acceder a ellos.
     query = select(Alerta).order_by(
         Alerta.severidad.desc(),
         Alerta.creada_en.asc(),
@@ -42,7 +70,8 @@ async def listar_alertas(
         query = query.where(Alerta.resuelta == False)
 
     result = await db.execute(query.offset(skip).limit(limit))
-    return result.scalars().all()
+    alertas = result.scalars().all()
+    return [_alerta_dict(a) for a in alertas]
 
 
 # ---------------------------------------------------------------------------

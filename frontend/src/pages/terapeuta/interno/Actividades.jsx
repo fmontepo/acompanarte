@@ -136,10 +136,14 @@ export default function TerIntActividades() {
     // Frontend espera: {id, titulo, paciente, categoria, frecuencia, completadas, total, activa}
     function normalizeActividad(a, pacsMap) {
       const pac = pacsMap?.[a.paciente_id]
+      // El backend devuelve nombre y apellido ya descifrados
+      const pacNombre = pac
+        ? ([pac.nombre, pac.apellido].filter(Boolean).join(' ') || pac.nombre_enc || 'Paciente')
+        : (a.paciente || 'Paciente')
       return {
         id:           a.id,
         titulo:       a.titulo,
-        paciente:     pac?.nombre || a.paciente || 'Paciente',
+        paciente:     pacNombre,
         categoria:    a.categoria || 'Bienestar',
         frecuencia:   a.frecuencia ? (a.frecuencia.charAt(0).toUpperCase() + a.frecuencia.slice(1)) : 'Diaria',
         completadas:  a.completadas ?? 0,
@@ -160,7 +164,11 @@ export default function TerIntActividades() {
         if (resPacs.status === 'fulfilled' && resPacs.value.ok) {
           const pacs = await resPacs.value.json()
           if (Array.isArray(pacs) && pacs.length > 0) {
-            setPacientes(pacs.map(p => ({ id: p.id, nombre: p.nombre_enc || 'Paciente' })))
+            // El backend devuelve nombre y apellido ya descifrados (no nombre_enc)
+            setPacientes(pacs.map(p => ({
+              id:     p.id,
+              nombre: [p.nombre, p.apellido].filter(Boolean).join(' ') || p.nombre_enc || 'Paciente',
+            })))
             pacs.forEach(p => { pacsMap[p.id] = p })
           }
         }

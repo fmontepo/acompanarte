@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 
 // ─────────────────────────────────────────────────────────────
 // AuthContext — estado global de sesión
@@ -21,19 +21,45 @@ const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 export function AuthProvider({ children }) {
   // user: null cuando no hay sesión
   // user: objeto con todo lo que devolvió el backend cuando sí hay sesión
-  const [user, setUser]   = useState(() => {
-    // Recuperar sesión persistida en localStorage si existe
-    try {
-      const stored = localStorage.getItem('acompanarte_user')
-      return stored ? JSON.parse(stored) : null
-    } catch {
-      return null
-    }
-  })
+  const [user, setUser]       = useState(null)
+  const [token, setToken]     = useState(null)
+  // isLoading: true mientras validamos el token almacenado al inicio.
+  // El router no debe tomar decisiones de redirect hasta que sea false.
+  const [isLoading, setIsLoading] = useState(true)
 
-  const [token, setToken] = useState(() =>
-    localStorage.getItem('acompanarte_token') ?? null
-  )
+  // ── Validar sesión almacenada al montar ─────────────────────
+  // Si hay un token en localStorage lo verificamos contra /auth/me.
+  // Si el token expiró o es inválido, limpiamos el storage y mostramos login.
+  useEffect(() => {
+    const storedToken = localStorage.getItem('acompanarte_token')
+    const storedUser  = localStorage.getItem('acompanarte_user')
+
+    if (!storedToken || !storedUser) {
+      setIsLoading(false)
+      return
+    }
+
+    fetch(`${API_BASE}/auth/me`, {
+      headers: { Authorization: `Bearer ${storedToken}` },
+    })
+      .then(res => {
+        if (res.ok) {
+          // Token vigente — restaurar sesión
+          setToken(storedToken)
+          setUser(JSON.parse(storedUser))
+        } else {
+          // Token expirado o inválido — limpiar storage
+          localStorage.removeItem('acompanarte_token')
+          localStorage.removeItem('acompanarte_user')
+        }
+      })
+      .catch(() => {
+        // Error de red: no podemos validar → limpiar para forzar re-login
+        localStorage.removeItem('acompanarte_token')
+        localStorage.removeItem('acompanarte_user')
+      })
+      .finally(() => setIsLoading(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── login ────────────────────────────────────────────────────
   // Devuelve { ok: true } o { ok: false, error: string }
@@ -121,7 +147,7 @@ export function AuthProvider({ children }) {
   }, [token])
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, hasRole, authFetch }}>
+    <AuthContext.Provider value={{ user, token, login, logout, hasRole, authFetch, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

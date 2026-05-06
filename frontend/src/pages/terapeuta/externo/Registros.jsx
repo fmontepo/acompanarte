@@ -81,7 +81,10 @@ export default function TerExtRegistros() {
 
   function normalizeRegistro(r, pacsMap) {
     const pac = pacsMap?.[r.paciente_id]
-    const nombre = pac?.nombre_enc || r.paciente || 'Paciente'
+    // El backend devuelve nombre y apellido ya descifrados (no nombre_enc)
+    const nombre = pac
+      ? ([pac.nombre, pac.apellido].filter(Boolean).join(' ') || 'Paciente')
+      : (r.paciente || 'Paciente')
     const initials = nombre.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
     return {
       id:       r.id,
@@ -107,7 +110,10 @@ export default function TerExtRegistros() {
         if (resPacs.status === 'fulfilled' && resPacs.value.ok) {
           const pacs = await resPacs.value.json()
           if (Array.isArray(pacs) && pacs.length > 0) {
-            setPacientes(pacs.map(p => ({ id: p.id, nombre: p.nombre_enc || 'Paciente' })))
+            setPacientes(pacs.map(p => ({
+              id:     p.id,
+              nombre: [p.nombre, p.apellido].filter(Boolean).join(' ') || 'Paciente',
+            })))
             pacs.forEach(p => { pacsMap[p.id] = p })
           }
         }

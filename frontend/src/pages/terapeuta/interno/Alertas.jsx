@@ -70,7 +70,11 @@ export default function TerIntAlertas() {
     // Actualización optimista
     setAlertas(prev => prev.map(a => a.id === id ? { ...a, resuelta: true } : a))
     try {
-      const res = await authFetch(`/alertas/${id}/resolver`, { method: 'POST' })
+      // El backend requiere el campo nota_resolucion en el body (AlertaResolver schema)
+      const res = await authFetch(`/alertas/${id}/resolver`, {
+        method: 'POST',
+        body: JSON.stringify({ nota_resolucion: 'Revisada y resuelta por el terapeuta.' }),
+      })
       if (res.ok) {
         setToast({ msg: 'Alerta marcada como resuelta.', ok: true })
       } else {
