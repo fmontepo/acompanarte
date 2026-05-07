@@ -215,3 +215,16 @@ async def ejecutar_batch_embedding() -> dict:
     stats["duracion_seg"] = round((fin - inicio).total_seconds(), 1)
     log.info("[Batch] Completado en %.1f s — %s", stats["duracion_seg"], stats)
     return stats
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Punto de entrada para ejecución directa:
+#   python -m app.services.embedding_batch
+# ──────────────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import logging as _logging
+    _logging.basicConfig(level=_logging.INFO, format="%(message)s")
+    import asyncio as _asyncio
+    result = _asyncio.run(ejecutar_batch_embedding())
+    print(result)
