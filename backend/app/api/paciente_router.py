@@ -23,6 +23,9 @@ from app.models.usuario import Usuario
 from app.models.rol import Rol
 from app.models.vinculoPaciente import VinculoPaciente
 from app.models.parentesco import Parentesco
+from app.models.terapeuta import Terapeuta
+from app.models.equipoTerapeutico import EquipoTerapeutico
+from app.models.miembroEquipo import MiembroEquipo
 
 router = APIRouter(
     prefix="/pacientes",
@@ -172,9 +175,15 @@ async def listar_pacientes(
 @router.post("/", status_code=status.HTTP_201_CREATED, summary="Crear nuevo paciente")
 async def crear_paciente(
     data: PacienteIn,
+    current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
-    """Crea un paciente nuevo. El nombre se almacena en nombre_enc."""
+    """
+    Crea un paciente nuevo y, si quien lo crea es un terapeuta interno,
+    genera automáticamente su EquipoTerapeutico y lo agrega como coordinador.
+    Esto garantiza que el paciente aparezca en las estadísticas y el RAG
+    del terapeuta desde el primer momento.
+    """
     if not data.nombre.strip():
         raise HTTPException(status_code=422, detail="El nombre del paciente es obligatorio.")
     if data.sexo and data.sexo not in {"M", "F", "X"}:
@@ -189,6 +198,33 @@ async def crear_paciente(
         activo=True,
     )
     db.add(paciente)
+    await db.flush()  # genera el id sin commitear todavía
+
+    # Si el creador es terapeuta interno, crear equipo y agregarlo como coordinador
+    if current_user.rol_key == "ter-int":
+        ter_res = await db.execute(
+            select(Terapeuta).where(Terapeuta.usuario_id == current_user.id)
+        )
+        terapeuta = ter_res.scalar_one_or_none()
+        if terapeuta:
+            equipo = EquipoTerapeutico(
+                id=_uuid.uuid4(),
+                paciente_id=paciente.id,
+                nombre=f"Equipo de {data.nombre.strip()}",
+                activo=True,
+            )
+            db.add(equipo)
+            await db.flush()  # genera el id del equipo
+
+            miembro = MiembroEquipo(
+                id=_uuid.uuid4(),
+                equipo_id=equipo.id,
+                terapeuta_id=terapeuta.id,
+                rol_en_equipo="coordinador",
+                activo=True,
+            )
+            db.add(miembro)
+
     await db.commit()
     await db.refresh(paciente)
 
