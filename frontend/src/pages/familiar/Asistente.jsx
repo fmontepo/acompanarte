@@ -68,6 +68,10 @@ export default function FamiliarAsistente() {
   const [loading, setLoading]   = useState(false)
   const bottomRef               = useRef(null)
 
+  // Banner de alerta — se muestra cuando el backend detecta señales sensibles
+  // null | 'visible' | 'descartado'
+  const [alertaBanner, setAlertaBanner] = useState(null)
+
   // Cargar nombre real del paciente
   useEffect(() => {
     authFetch('/familiar/dashboard')
@@ -112,6 +116,10 @@ export default function FamiliarAsistente() {
           texto: data.respuesta ?? getIA(texto, pacienteNombre),
           hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
         }])
+        // Si el backend detectó señales de alerta, mostrar el banner
+        if (data.alerta && alertaBanner === null) {
+          setAlertaBanner('visible')
+        }
       } else {
         throw new Error('fallback')
       }
@@ -238,6 +246,38 @@ export default function FamiliarAsistente() {
               {s}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Banner de alerta — se muestra cuando el backend detecta señales sensibles */}
+      {alertaBanner === 'visible' && (
+        <div style={{
+          background: 'rgba(229,62,62,0.07)',
+          border: '1px solid rgba(229,62,62,0.3)',
+          borderRadius: 10,
+          padding: '12px 16px',
+          marginBottom: 12,
+          flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--danger)', marginBottom: 4 }}>
+                🔔 Tu equipo terapéutico ha sido notificado
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--text)', lineHeight: 1.5 }}>
+                Detectamos una situación que puede requerir atención del equipo terapéutico de {pacienteNombre}.
+                Se generó una alerta para que un terapeuta la revise a la brevedad.
+              </div>
+            </div>
+            <button
+              className="btn btn-g btn-sm"
+              onClick={() => setAlertaBanner('descartado')}
+              style={{ fontSize: 11, flexShrink: 0 }}
+              title="Cerrar aviso"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 

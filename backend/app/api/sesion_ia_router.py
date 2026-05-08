@@ -36,6 +36,7 @@ class ChatResponse(BaseModel):
     respuesta: str
     sesion_id: Optional[str] = None
     fuentes: list = []
+    alerta: bool = False
 
 
 class ChatPublicoResponse(BaseModel):
@@ -126,6 +127,7 @@ async def chat_ia(
                 respuesta=resultado.get("respuesta", "No pude procesar tu consulta."),
                 sesion_id=str(sesion_id_uuid),
                 fuentes=resultado.get("fuentes", []),
+                alerta=resultado.get("alerta", False),
             )
     except Exception:
         pass  # Fallback a respuesta genérica si el RAG falla

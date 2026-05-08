@@ -134,7 +134,7 @@ export default function AppShell() {
     const rolesConAlertas = ['ter-int', 'familia']
     if (!rolesConAlertas.includes(user.rol_key)) return
 
-    authFetch('/api/v1/alertas/?solo_pendientes=true&limit=50')
+    authFetch('/alertas/?solo_pendientes=true&limit=50')
       .then(res => res.ok ? res.json() : [])
       .then(data => setAlertBadge(Array.isArray(data) ? data.length : 0))
       .catch(() => setAlertBadge(0))

@@ -134,7 +134,7 @@ export function AuthProvider({ children }) {
 
   // ── authFetch ────────────────────────────────────────────────
   // Wrapper de fetch que inyecta el JWT automáticamente.
-  // Uso: authFetch('/api/v1/pacientes')
+  // Uso: authFetch('/pacientes')  — NO incluir el prefijo /api/v1, ya está en API_BASE
   const authFetch = useCallback((url, options = {}) => {
     return fetch(`${API_BASE}${url}`, {
       ...options,
