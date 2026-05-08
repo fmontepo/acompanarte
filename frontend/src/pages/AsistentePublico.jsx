@@ -376,36 +376,51 @@ export default function AsistentePublico() {
             </div>
           )}
 
-          {/* ── Banner de contacto (integrado, no como burbuja IA separada) ── */}
+          {/* ── Banner de contacto — notificación diferenciada (NO es una burbuja IA) ── */}
           {contactoFlujo === 'preguntando' && (
-            <div style={{
-              marginBottom: 14, paddingLeft: 38,
-            }}>
+            <div style={{ marginBottom: 14 }}>
               <div style={{
-                background: 'rgba(56,161,105,0.08)',
-                border: '1px solid rgba(56,161,105,0.3)',
-                borderRadius: '12px 12px 12px 2px',
+                background: 'rgba(56,161,105,0.10)',
+                border: '1px solid rgba(56,161,105,0.35)',
+                borderRadius: 10,
                 padding: '12px 16px',
+                display: 'flex',
+                gap: 10,
+                alignItems: 'flex-start',
               }}>
-                <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 10, lineHeight: 1.5 }}>
-                  🤝 Lo que describís puede requerir atención especializada.
-                  ¿Querés que te contacte un terapeuta de Acompañarte? Es <strong>gratuito</strong> y sin compromiso.
+                {/* Icono diferenciador */}
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  background: 'rgba(56,161,105,0.18)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, fontSize: 16,
+                }}>
+                  🤝
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    className="btn btn-sm"
-                    onClick={responderSi}
-                    style={{ fontSize: 12, background: 'var(--teal)', color: '#fff', border: 'none' }}
-                  >
-                    Sí, quiero que me contacten
-                  </button>
-                  <button
-                    className="btn btn-g btn-sm"
-                    onClick={responderNo}
-                    style={{ fontSize: 12 }}
-                  >
-                    No, gracias
-                  </button>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--teal)', marginBottom: 4 }}>
+                    Atención especializada disponible
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 10, lineHeight: 1.5 }}>
+                    Lo que describís puede requerir evaluación de un especialista.
+                    ¿Querés que un terapeuta de Acompañarte te contacte? Es <strong>gratuito</strong> y sin compromiso.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn-sm"
+                      onClick={responderSi}
+                      style={{ fontSize: 12, background: 'var(--teal)', color: '#fff', border: 'none' }}
+                    >
+                      Sí, quiero que me contacten
+                    </button>
+                    <button
+                      className="btn btn-g btn-sm"
+                      onClick={responderNo}
+                      style={{ fontSize: 12 }}
+                    >
+                      No, gracias
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

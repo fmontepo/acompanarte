@@ -36,6 +36,7 @@ from app.api.contacto_publico_router import router as contacto_publico_router
 from app.api.contacto_publico_router import terapeutas_router as contacto_terapeutas_router
 from app.api.regla_ia_router import router as regla_ia_router
 from app.api.terapeuta_ia_router import router as terapeuta_ia_router
+from app.api.ter_int_contactos_router import router as ter_int_contactos_router
 from app.services.scheduler import setup_scheduler, shutdown_scheduler
 
 
@@ -74,6 +75,7 @@ _ROLES_SEED = [
             {"section": "Herramientas", "items": [
                 {"id": "ter-int-asistente",    "icon": "bot",  "label": "Asistente IA"},
                 {"id": "ter-int-conocimiento", "icon": "book", "label": "Base de conocimiento"},
+                {"id": "ter-int-contactos",    "icon": "mail", "label": "Contactos TEA"},
                 {"id": "alertas",              "icon": "bell", "label": "Alertas", "badge": 0},
             ]},
         ],
@@ -370,6 +372,7 @@ app.include_router(contacto_publico_router,       prefix=PREFIX)
 app.include_router(contacto_terapeutas_router,    prefix=PREFIX)
 app.include_router(regla_ia_router,               prefix=PREFIX)
 app.include_router(terapeuta_ia_router,           prefix=PREFIX)
+app.include_router(ter_int_contactos_router,      prefix=PREFIX)
 # auth_router ya incluido al inicio — no duplicar
 
 # ---------------------------------------------------------------------------

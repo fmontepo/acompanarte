@@ -183,6 +183,23 @@ async def actualizar_usuario(
     # Actualizar solo los campos enviados (partial update)
     update_data = data.model_dump(exclude_unset=True)
 
+    # ── Protección: no desactivar al único administrador activo ─────────────
+    if update_data.get("activo") is False and usuario.rol.key == "admin":
+        from sqlalchemy import func as _func
+        count_q = await db.execute(
+            select(_func.count(Usuario.id))
+            .join(Rol, Usuario.rol_id == Rol.id)
+            .where(Rol.key == "admin")
+            .where(Usuario.activo == True)
+            .where(Usuario.id != usuario_id)
+        )
+        otros_admins_activos = count_q.scalar()
+        if otros_admins_activos == 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="No podés desactivar al único administrador activo del sistema. Creá otro admin primero.",
+            )
+
     # Si viene 'rol', buscar el objeto Rol y actualizar rol_id
     if "rol" in update_data:
         rol_key = update_data.pop("rol")

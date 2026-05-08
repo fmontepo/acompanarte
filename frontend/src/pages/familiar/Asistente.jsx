@@ -67,6 +67,8 @@ export default function FamiliarAsistente() {
   const [input, setInput]       = useState('')
   const [loading, setLoading]   = useState(false)
   const bottomRef               = useRef(null)
+  // Ref sincrónico para evitar doble envío (race condition con loading state + StrictMode)
+  const enviandoRef             = useRef(false)
 
   // Banner de alerta — se muestra cuando el backend detecta señales sensibles
   // null | 'visible' | 'descartado'
@@ -91,7 +93,8 @@ export default function FamiliarAsistente() {
   }, [mensajes])
 
   async function enviar(texto) {
-    if (!texto.trim() || loading) return
+    if (!texto.trim() || enviandoRef.current) return
+    enviandoRef.current = true
     const msgUsuario = {
       id: Date.now(),
       rol: 'usuario',
@@ -133,6 +136,7 @@ export default function FamiliarAsistente() {
         hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
       }])
     } finally {
+      enviandoRef.current = false
       setLoading(false)
     }
   }
