@@ -129,8 +129,10 @@ async def chat_ia(
                 fuentes=resultado.get("fuentes", []),
                 alerta=resultado.get("alerta", False),
             )
-    except Exception:
-        pass  # Fallback a respuesta genérica si el RAG falla
+    except Exception as exc:
+        import traceback
+        import logging as _log
+        _log.error("[chat-familiar] Error en pipeline IA: %s\n%s", exc, traceback.format_exc())
 
     # Respuesta fallback cuando RAG no está disponible
     return ChatResponse(
@@ -178,8 +180,10 @@ async def chat_ia_publico(
             fuentes=resultado.get("fuentes", []),
             alerta=resultado.get("alerta", False),
         )
-    except Exception:
-        pass  # Fallback si el pipeline RAG no está disponible
+    except Exception as exc:
+        import traceback
+        import logging as _log
+        _log.error("[chat-publico] Error en pipeline IA: %s\n%s", exc, traceback.format_exc())
 
     return ChatPublicoResponse(
         respuesta=(
