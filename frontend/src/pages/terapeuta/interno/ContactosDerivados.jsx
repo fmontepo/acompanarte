@@ -72,9 +72,16 @@ function EstadoBadge({ estado }) {
 function ModalAtender({ contacto, onAtendido, onClose }) {
   const { authFetch } = useAuth()
   // Pre-rellenar con los datos del contacto
-  const [nombre,   setNombre]   = useState(contacto.nombre ?? '')
-  const [apellido, setApellido] = useState('')
-  const [email,    setEmail]    = useState(contacto.mail ?? '')
+  // contacto.nombre puede traer "Nombre Apellido" junto — separar en el primer espacio
+  const [nombre, setNombre] = useState(() => {
+    const partes = (contacto.nombre ?? '').trim().split(/\s+/)
+    return partes[0] || ''
+  })
+  const [apellido, setApellido] = useState(() => {
+    const partes = (contacto.nombre ?? '').trim().split(/\s+/)
+    return partes.slice(1).join(' ') || ''
+  })
+  const [email, setEmail] = useState(contacto.mail ?? '')
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(false)
 
