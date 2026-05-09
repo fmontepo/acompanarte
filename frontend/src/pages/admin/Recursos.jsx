@@ -1,7 +1,8 @@
 // admin/Recursos.jsx
 // Panel de administración de la base de conocimiento.
 // El admin puede ver todos los recursos (validados y pendientes),
-// validarlos para que el Asistente IA los use, y desactivarlos.
+// validarlos para que el Asistente IA los use, desactivarlos,
+// y también subir nuevos recursos directamente.
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
@@ -19,6 +20,13 @@ const CAT_COLORS = {
   Guía:      'ch-teal',
   Protocolo: 'ch-pp',
 }
+
+const TIPOS_OPCIONES = [
+  { val: 'pdf',       label: 'PDF' },
+  { val: 'articulo',  label: 'Artículo' },
+  { val: 'guia',      label: 'Guía' },
+  { val: 'protocolo', label: 'Protocolo' },
+]
 
 function normalizeRecurso(r) {
   const categoria = TIPO_LABEL[r.tipo] ?? r.tipo ?? 'Recurso'
@@ -58,6 +66,11 @@ const IcoSearch = () => (
     <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/>
   </svg>
 )
+const IcoPlus = () => (
+  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+    <path strokeLinecap="round" d="M12 5v14M5 12h14"/>
+  </svg>
+)
 
 // ─── Modal contenido ─────────────────────────────────────────────────────
 function ModalContenido({ recurso, onClose }) {
@@ -95,37 +108,145 @@ function ModalContenido({ recurso, onClose }) {
   )
 }
 
+// ─── Modal nuevo recurso ─────────────────────────────────────────────────
+const FORM_EMPTY = { titulo: '', tipo: 'pdf', descripcion: '', contenido_texto: '', url_storage: '' }
+
+function ModalNuevoRecurso({ onClose, onGuardado }) {
+  const { authFetch } = useAuth()
+  const [form, setForm]     = useState(FORM_EMPTY)
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState('')
+
+  function set(k, v) { setForm(p => ({ ...p, [k]: v })) }
+
+  async function handleGuardar(e) {
+    e.preventDefault()
+    if (!form.titulo.trim()) { setError('El título es obligatorio.'); return }
+    setSaving(true)
+    setError('')
+    try {
+      const res = await authFetch('/recursos/', {
+        method: 'POST',
+        body: JSON.stringify({
+          titulo:          form.titulo.trim(),
+          tipo:            form.tipo,
+          descripcion:     form.descripcion.trim() || null,
+          contenido_texto: form.contenido_texto.trim() || null,
+          url_storage:     form.url_storage.trim() || null,
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        onGuardado(normalizeRecurso(data))
+        onClose()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setError(err?.detail ?? 'Error al guardar el recurso.')
+      }
+    } catch {
+      setError('Error de conexión. Intentá de nuevo.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="ov open" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="mo" style={{ maxWidth: 540 }}>
+        <div className="mh">
+          <div className="mt">Nuevo recurso</div>
+          <button className="btn btn-g btn-sm" onClick={onClose}>✕</button>
+        </div>
+        <form onSubmit={handleGuardar}>
+          <div className="mb" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label className="fl">Título <span style={{ color: 'var(--red)' }}>*</span></label>
+              <input className="fi" value={form.titulo} onChange={e => set('titulo', e.target.value)}
+                placeholder="Ej: Guía de intervención temprana TEA" />
+            </div>
+            <div>
+              <label className="fl">Tipo</label>
+              <select className="fi" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
+                {TIPOS_OPCIONES.map(t => <option key={t.val} value={t.val}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="fl">Descripción <span className="tm">(opcional)</span></label>
+              <textarea className="fi" rows={2} value={form.descripcion}
+                onChange={e => set('descripcion', e.target.value)}
+                placeholder="Breve descripción del contenido…" />
+            </div>
+            <div>
+              <label className="fl">
+                Contenido del recurso{' '}
+                <span className="tm">(texto para el Asistente IA)</span>
+              </label>
+              <textarea className="fi" rows={5} value={form.contenido_texto}
+                onChange={e => set('contenido_texto', e.target.value)}
+                placeholder="Pegá aquí el texto del documento. Al validar el recurso, se usará para el Asistente IA." />
+              <div className="ts tm" style={{ marginTop: 4 }}>
+                Al validar el recurso, se generará automáticamente el embedding para RAG.
+              </div>
+            </div>
+            <div>
+              <label className="fl">URL del recurso <span className="tm">(opcional)</span></label>
+              <input className="fi" value={form.url_storage} onChange={e => set('url_storage', e.target.value)}
+                placeholder="https://…" />
+            </div>
+            {error && <div className="disc disc-rd ts">{error}</div>}
+            <div className="disc disc-tl ts" style={{ marginTop: 0 }}>
+              El recurso quedará como <strong>pendiente de validación</strong>.
+              Podés validarlo desde esta misma pantalla.
+            </div>
+          </div>
+          <div className="mf">
+            <button type="button" className="btn btn-s btn-sm" onClick={onClose}>Cancelar</button>
+            <button type="submit" className="btn btn-p btn-sm" disabled={saving}>
+              {saving ? 'Guardando…' : 'Agregar recurso'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────
 export default function AdminRecursos() {
   const { authFetch } = useAuth()
   const [recursos, setRecursos]   = useState([])
   const [loading, setLoading]     = useState(true)
-  const [filtro, setFiltro]       = useState('todos')   // todos | validados | pendientes
+  const [apiError, setApiError]   = useState('')      // error persistente de carga
+  const [filtro, setFiltro]       = useState('todos') // todos | validados | pendientes
   const [busqueda, setBusqueda]   = useState('')
   const [expandido, setExpandido] = useState(null)
-  const [verContenido, setVerContenido] = useState(null)
-  const [validando, setValidando] = useState(null)
-  const [desactivando, setDesactivando] = useState(null)
-  const [toast, setToast]         = useState({ msg: '', ok: true })
+  const [verContenido, setVerContenido]   = useState(null)
+  const [modalNuevo, setModalNuevo]       = useState(false)
+  const [validando, setValidando]         = useState(null)
+  const [desactivando, setDesactivando]   = useState(null)
+  const [toast, setToast] = useState({ msg: '', ok: true })
 
   function showToast(msg, ok = true) {
     setToast({ msg, ok })
-    setTimeout(() => setToast({ msg: '', ok: true }), 3000)
+    setTimeout(() => setToast({ msg: '', ok: true }), 3500)
   }
 
   async function cargar() {
     setLoading(true)
+    setApiError('')
     try {
       const res = await authFetch('/recursos/?solo_validados=false')
       if (res.ok) {
         const data = await res.json()
         setRecursos(Array.isArray(data) ? data.map(normalizeRecurso) : [])
       } else {
+        const err = await res.json().catch(() => ({}))
+        setApiError(err?.detail ?? `Error del servidor (${res.status}). Intentá recargar.`)
         setRecursos([])
       }
     } catch {
+      setApiError('No se pudo conectar con el servidor. Verificá la conexión e intentá de nuevo.')
       setRecursos([])
-      showToast('Error al cargar los recursos.', false)
     } finally {
       setLoading(false)
     }
@@ -178,6 +299,11 @@ export default function AdminRecursos() {
     }
   }
 
+  function onRecursoAgregado(recurso) {
+    setRecursos(prev => [recurso, ...prev])
+    showToast('Recurso agregado. Podés validarlo desde esta pantalla.')
+  }
+
   const total     = recursos.length
   const validados = recursos.filter(r => r.validado).length
   const pendientes = total - validados
@@ -198,7 +324,9 @@ export default function AdminRecursos() {
         <div>
           <div style={{ fontSize: 20, fontWeight: 700 }}>Base de conocimiento</div>
           <div className="ts tm" style={{ marginTop: 3 }}>
-            {loading ? 'Cargando…' : (
+            {loading ? 'Cargando…' : apiError ? (
+              <span style={{ color: 'var(--red)' }}>Error al cargar</span>
+            ) : (
               <>
                 {total} recursos · {validados} validados
                 {pendientes > 0 && (
@@ -210,11 +338,32 @@ export default function AdminRecursos() {
             )}
           </div>
         </div>
-        <button className="btn btn-s btn-sm" onClick={cargar}>↺ Actualizar</button>
+        <div className="flex ic g8">
+          <button className="btn btn-s btn-sm" onClick={cargar} disabled={loading}>
+            ↺ Actualizar
+          </button>
+          <button
+            className="btn btn-p btn-sm flex ic g6"
+            onClick={() => setModalNuevo(true)}
+          >
+            <IcoPlus /> Nuevo recurso
+          </button>
+        </div>
       </div>
 
+      {/* Error persistente */}
+      {apiError && (
+        <div className="disc disc-rd" style={{ marginBottom: 20 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>No se pudieron cargar los recursos</div>
+          <div className="ts">{apiError}</div>
+          <button className="btn btn-s btn-sm" style={{ marginTop: 10 }} onClick={cargar}>
+            Reintentar
+          </button>
+        </div>
+      )}
+
       {/* Resumen rápido */}
-      {!loading && (
+      {!loading && !apiError && (
         <div className="flex g10 mb20" style={{ flexWrap: 'wrap' }}>
           {[
             { label: 'Total',      val: total,     color: 'var(--text)' },
@@ -229,37 +378,58 @@ export default function AdminRecursos() {
         </div>
       )}
 
-      {/* Buscador */}
-      <div style={{ position: 'relative', marginBottom: 12 }}>
-        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }}>
-          <IcoSearch />
-        </span>
-        <input className="fi" value={busqueda} onChange={e => setBusqueda(e.target.value)}
-          placeholder="Buscar por título o descripción…" style={{ paddingLeft: 34 }} />
-      </div>
+      {/* Buscador + Filtros — siempre visibles */}
+      {!apiError && (
+        <>
+          <div style={{ position: 'relative', marginBottom: 12 }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }}>
+              <IcoSearch />
+            </span>
+            <input className="fi" value={busqueda} onChange={e => setBusqueda(e.target.value)}
+              placeholder="Buscar por título o descripción…" style={{ paddingLeft: 34 }} />
+          </div>
 
-      {/* Filtros */}
-      <div className="flex ic g8 mb20" style={{ flexWrap: 'wrap' }}>
-        {[
-          { val: 'todos',      label: `Todos (${total})` },
-          { val: 'pendientes', label: `Pendientes (${pendientes})` },
-          { val: 'validados',  label: `Validados (${validados})` },
-        ].map(f => (
-          <button key={f.val} className={`btn btn-sm ${filtro === f.val ? 'btn-p' : 'btn-s'}`}
-            onClick={() => setFiltro(f.val)}>
-            {f.label}
-          </button>
-        ))}
-      </div>
+          <div className="flex ic g8 mb20" style={{ flexWrap: 'wrap' }}>
+            {[
+              { val: 'todos',      label: `Todos (${total})` },
+              { val: 'pendientes', label: `Pendientes (${pendientes})` },
+              { val: 'validados',  label: `Validados (${validados})` },
+            ].map(f => (
+              <button key={f.val} className={`btn btn-sm ${filtro === f.val ? 'btn-p' : 'btn-s'}`}
+                onClick={() => setFiltro(f.val)}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
-      {/* Lista */}
+      {/* Lista / estados */}
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>Cargando…</div>
-      ) : filtrados.length === 0 ? (
+      ) : apiError ? null : filtrados.length === 0 ? (
         <div style={{ padding: 48, textAlign: 'center', color: 'var(--text3)' }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>📚</div>
-          <div style={{ fontWeight: 600, color: 'var(--text)' }}>Sin recursos</div>
-          <div className="ts tm" style={{ marginTop: 4 }}>No hay recursos con el filtro seleccionado.</div>
+          {total === 0 ? (
+            <>
+              <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
+                No hay recursos en la base de conocimiento
+              </div>
+              <div className="ts" style={{ marginBottom: 16, maxWidth: 360, margin: '0 auto 16px' }}>
+                Los terapeutas pueden subir recursos desde su panel de Conocimiento.
+                También podés agregar recursos directamente desde acá.
+              </div>
+              <button className="btn btn-p btn-sm flex ic g6" style={{ margin: '0 auto' }}
+                onClick={() => setModalNuevo(true)}>
+                <IcoPlus /> Agregar primer recurso
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ fontWeight: 600, color: 'var(--text)' }}>Sin resultados</div>
+              <div className="ts tm" style={{ marginTop: 4 }}>No hay recursos con el filtro seleccionado.</div>
+            </>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -353,6 +523,7 @@ export default function AdminRecursos() {
       )}
 
       {verContenido && <ModalContenido recurso={verContenido} onClose={() => setVerContenido(null)} />}
+      {modalNuevo   && <ModalNuevoRecurso onClose={() => setModalNuevo(false)} onGuardado={onRecursoAgregado} />}
     </div>
   )
 }
