@@ -359,43 +359,6 @@ export default function TerIntConocimiento() {
             ))}
           </div>
 
-          {/* Destacados (validados) */}
-          {cat === 'Todas' && !busqueda && articulos.some(a => a.destacado) && (
-            <div className="mb20">
-              <div className="ts f6 mb12 flex ic g6" style={{ color: 'var(--amber)' }}>
-                <IcoStar /> Recursos validados
-              </div>
-              <div className="g2">
-                {articulos.filter(a => a.destacado).map(a => (
-                  <div key={a.id} className="card"
-                    style={{ background: 'var(--amber2)', border: '1px solid #f0cb8a', cursor: 'pointer' }}
-                    onClick={() => setExpandido(expandido === a.id ? null : a.id)}>
-                    <div className="flex ic jb mb8">
-                      <span className={`chip ${CAT_COLORS[a.categoria] ?? 'ch-gray'}`}>{a.categoria}</span>
-                      <span className="txs tm">{a.fecha}</span>
-                    </div>
-                    <div className="flex ic g6" style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-                      <span style={{ color: 'var(--amber)', flexShrink: 0 }} title="Recurso validado"><IcoStar /></span>
-                      <span>{a.titulo}</span>
-                    </div>
-                    {expandido === a.id && (
-                      <div className="ts" style={{ color: 'var(--text2)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-                        {a.resumen || <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>Sin descripción.</span>}
-                        {a.url && (
-                          <a href={a.url} target="_blank" rel="noopener noreferrer"
-                            className="btn btn-s btn-sm" style={{ display: 'inline-block', marginTop: 10 }}
-                            onClick={e => e.stopPropagation()}>
-                            Ver recurso →
-                          </a>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Lista completa */}
           {filtrados.length === 0 ? (
             <div style={{ padding: 48, textAlign: 'center', color: 'var(--text3)' }}>
@@ -406,7 +369,12 @@ export default function TerIntConocimiento() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {filtrados.map(a => (
-                <div key={a.id} className="card" style={{ transition: 'box-shadow 0.15s' }}
+                <div key={a.id} className="card"
+                  style={{
+                    borderLeft: `4px solid ${a.validado ? 'var(--teal)' : 'var(--amber)'}`,
+                    borderRadius: '0 var(--radius) var(--radius) 0',
+                    transition: 'box-shadow 0.15s',
+                  }}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
 
