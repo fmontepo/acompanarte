@@ -14,6 +14,8 @@ from app.db.session import get_db
 from app.models.alerta import Alerta
 from app.schemas.alerta import AlertaRead, AlertaResolver
 from app.api.deps import CurrentUser, require_roles
+from app.models.familiar import Familiar
+from app.models.ia import SesionIA
 
 router = APIRouter(prefix="/alertas", tags=["Alertas"])
 
@@ -139,3 +141,44 @@ async def resolver_alerta(
     await db.commit()
     await db.refresh(alerta)
     return alerta
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/v1/alertas/{id}/leida — marcar como leída (familiar)
+# No resuelve la alerta — solo registra que el familiar la leyó.
+# ---------------------------------------------------------------------------
+@router.patch(
+    "/{alerta_id}/leida",
+    summary="Marcar alerta como leída (familiar)",
+)
+async def marcar_leida(
+    alerta_id: UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    # Verificar que la alerta existe
+    result = await db.execute(select(Alerta).where(Alerta.id == alerta_id))
+    alerta = result.scalar_one_or_none()
+    if not alerta:
+        raise HTTPException(status_code=404, detail="Alerta no encontrada")
+
+    # Verificar que el familiar tiene acceso a esta alerta (su sesión o su paciente)
+    if current_user.rol.key == "familia":
+        fam_q = await db.execute(
+            select(Familiar).where(Familiar.usuario_id == current_user.id)
+        )
+        familiar = fam_q.scalar_one_or_none()
+        if not familiar:
+            raise HTTPException(status_code=403, detail="No tenés perfil de familiar")
+
+        sesion_q = await db.execute(
+            select(SesionIA).where(SesionIA.id == alerta.sesion_id)
+        )
+        sesion = sesion_q.scalar_one_or_none()
+        if not sesion or sesion.familiar_id != familiar.id:
+            raise HTTPException(status_code=403, detail="No tenés acceso a esta alerta")
+
+    alerta.leida = True
+    await db.commit()
+
+    return {"id": str(alerta.id), "leida": alerta.leida}

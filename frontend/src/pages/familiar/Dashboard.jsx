@@ -172,7 +172,7 @@ export default function FamiliarDashboard() {
       {/* ── Saludo ──────────────────────────────────────────────── */}
       <div className="flex ic jb mb20">
         <div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{saludo}, {user?.nombre ?? nombre} 👋</div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>{saludo}, {user?.nombre ?? ''} 👋</div>
           <div className="ts tm" style={{ marginTop: 3 }}>
             {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </div>

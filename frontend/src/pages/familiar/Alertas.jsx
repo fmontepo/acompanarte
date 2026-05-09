@@ -42,8 +42,25 @@ export default function FamiliarAlertas() {
     cargar()
   }, [authFetch])
 
-  function marcarLeida(id) {
+  async function marcarLeida(id) {
+    // Actualización optimista en UI
     setAlertas(prev => prev.map(a => a.id === id ? { ...a, leida: true } : a))
+    try {
+      await authFetch(`/alertas/${id}/leida`, { method: 'PATCH' })
+      // Si falla el backend revertimos: el estado quedará "leida" en UI
+      // pero se restaurará al recargar. No revertimos para no interrumpir UX.
+    } catch {
+      // Error silencioso — la próxima carga traerá el estado real del servidor
+    }
+  }
+
+  async function marcarTodasLeidas() {
+    const noLeidasActuales = alertas.filter(a => !a.leida)
+    setAlertas(prev => prev.map(a => ({ ...a, leida: true })))
+    // Llamar al backend para cada alerta no leída
+    await Promise.allSettled(
+      noLeidasActuales.map(a => authFetch(`/alertas/${a.id}/leida`, { method: 'PATCH' }))
+    )
   }
 
   const noLeidas = alertas.filter(a => !a.leida).length
@@ -61,7 +78,7 @@ export default function FamiliarAlertas() {
           </div>
         </div>
         {noLeidas > 0 && (
-          <button className="btn btn-s btn-sm" onClick={() => setAlertas(prev => prev.map(a => ({ ...a, leida: true })))}>
+          <button className="btn btn-s btn-sm" onClick={marcarTodasLeidas}>
             Marcar todas como leídas
           </button>
         )}

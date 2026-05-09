@@ -24,6 +24,7 @@ from app.models.alerta import Alerta
 from app.models.miembroEquipo import MiembroEquipo
 from app.models.equipoTerapeutico import EquipoTerapeutico
 from app.models.progresoActividad import ProgresoActividad
+from app.models.ia import SesionIA
 from app.models.recursoProfesional import RecursoProfesional
 from app.models.parentesco import Parentesco
 
@@ -327,10 +328,15 @@ async def familiar_dashboard(current_user: CurrentUser, db: DBDep):
     else:
         completadas_hoy = set()
 
-    # ── Alertas activas del familiar ───────────────────────────────────────
+    # ── Alertas activas del familiar (solo las de sus sesiones o las de su paciente) ─
     alertas_q = await db.execute(
         select(Alerta)
-        .where(Alerta.resuelta == False)
+        .join(SesionIA, Alerta.sesion_id == SesionIA.id)
+        .where(
+            Alerta.resuelta == False,
+            (SesionIA.familiar_id == familiar.id) |
+            (SesionIA.paciente_id == paciente.id),
+        )
         .order_by(Alerta.creada_en.desc())
         .limit(3)
     )
@@ -535,12 +541,48 @@ async def familiar_actividades(current_user: CurrentUser, db: DBDep):
 # ─────────────────────────────────────────────────────────────────────────────
 @router.get("/familiar/alertas", summary="Alertas del familiar")
 async def familiar_alertas(current_user: CurrentUser, db: DBDep):
-    alertas_q = await db.execute(
-        select(Alerta)
-        .where(Alerta.resuelta == False)
-        .order_by(Alerta.creada_en.desc())
-        .limit(20)
+    # Obtener perfil familiar
+    fam_q = await db.execute(
+        select(Familiar).where(Familiar.usuario_id == current_user.id)
     )
+    familiar = fam_q.scalar_one_or_none()
+    if not familiar:
+        return []
+
+    # Obtener IDs de pacientes vinculados al familiar
+    vinculos_q = await db.execute(
+        select(VinculoPaciente.paciente_id)
+        .where(VinculoPaciente.familiar_id == familiar.id, VinculoPaciente.activo == True)
+    )
+    pac_ids = [row[0] for row in vinculos_q.all()]
+
+    # Obtener alertas de sesiones IA del familiar o de sus pacientes
+    # Alerta → SesionIA: filtramos por sesiones donde familiar_id = familiar.id
+    # o paciente_id está en los pacientes vinculados
+    if pac_ids:
+        alertas_q = await db.execute(
+            select(Alerta)
+            .join(SesionIA, Alerta.sesion_id == SesionIA.id)
+            .where(
+                Alerta.resuelta == False,
+                (SesionIA.familiar_id == familiar.id) |
+                (SesionIA.paciente_id.in_(pac_ids)),
+            )
+            .order_by(Alerta.creada_en.desc())
+            .limit(20)
+        )
+    else:
+        # Solo alertas de las sesiones propias del familiar (sin paciente vinculado)
+        alertas_q = await db.execute(
+            select(Alerta)
+            .join(SesionIA, Alerta.sesion_id == SesionIA.id)
+            .where(
+                Alerta.resuelta == False,
+                SesionIA.familiar_id == familiar.id,
+            )
+            .order_by(Alerta.creada_en.desc())
+            .limit(20)
+        )
     alertas = alertas_q.scalars().all()
 
     TIPO_LABEL = {"urgente": "Urgente", "aviso": "Aviso", "positivo": "Positivo", "incidente": "Incidente"}
@@ -552,7 +594,7 @@ async def familiar_alertas(current_user: CurrentUser, db: DBDep):
             "texto":  a.descripcion or "",
             "tipo":   a.tipo or "aviso",
             "fecha":  a.creada_en.isoformat() if a.creada_en else None,
-            "leida":  False,
+            "leida":  a.leida,
         }
         for a in alertas
     ]

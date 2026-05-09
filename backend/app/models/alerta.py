@@ -72,6 +72,13 @@ class Alerta(Base):
     # resuelta=False por default — requiere acción humana explícita
     # ------------------------------------------------------------------
     resuelta = Column(Boolean, nullable=False, default=False, index=True)
+    leida = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment="True cuando el familiar ya leyó la alerta (no implica resolución terapéutica)",
+    )
     nota_resolucion = Column(
         Text,
         nullable=True,
