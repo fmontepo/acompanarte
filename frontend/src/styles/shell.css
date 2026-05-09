@@ -9,47 +9,128 @@
 }
 
 .login-card {
-  background: #fff;
+  display: flex;
+  width: 100%;
+  max-width: 780px;
+  min-height: 480px;
   border-radius: 16px;
   box-shadow: var(--shadow);
-  padding: 40px;
-  width: 100%;
-  max-width: 400px;
+  overflow: hidden;
 }
 
-.login-logo {
-  text-align: center;
-  margin-bottom: 28px;
+/* ── Panel izquierdo — branding + asistente ── */
+.login-left {
+  width: 42%;
+  background: var(--teal3);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 36px 30px;
+}
+
+.login-left-brand {
+  display: flex;
+  flex-direction: column;
 }
 
 .lico {
-  width: 52px;
-  height: 52px;
-  background: var(--teal);
+  width: 48px;
+  height: 48px;
+  background: rgba(255,255,255,0.18);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 10px;
+  margin-bottom: 14px;
+}
+
+.login-left-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.login-left-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,0.72);
+  line-height: 1.6;
+}
+
+.login-assist-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-assist-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.3px;
+}
+
+.login-assist-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 9px;
+  padding: 11px 14px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  width: 100%;
+}
+
+.login-assist-btn:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+/* ── Panel derecho — formulario ── */
+.login-right {
+  width: 58%;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 36px 36px;
+}
+
+.login-right-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.login-right-sub {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 20px;
 }
 
 .role-sel {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 
 .rbtn {
-  padding: 10px 6px;
-  border: 2px solid var(--border);
+  padding: 8px 4px;
+  border: 1.5px solid var(--border);
   border-radius: 8px;
   text-align: center;
   cursor: pointer;
   transition: all 0.15s;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   user-select: none;
+  color: var(--text2);
 }
 
 .rbtn:hover,
@@ -61,9 +142,9 @@
 }
 
 .ric {
-  font-size: 22px;
+  font-size: 20px;
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 /* ── App shell ──────────────────────────────────────────────────── */
