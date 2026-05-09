@@ -81,7 +81,7 @@ def _contacto_dict(c: ContactoPublico, usuario_familiar_id: Optional[str] = None
 @router.get("", summary="Ver contactos derivados al terapeuta actual")
 async def mis_contactos_derivados(
     estado: Optional[str] = None,   # derivado | atendido | no_atendido
-    current_user: CurrentUser = Depends(),
+    current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -116,7 +116,7 @@ async def mis_contactos_derivados(
 async def atender_contacto(
     contacto_id: UUID,
     body: AtenderRequest,
-    current_user: CurrentUser = Depends(),
+    current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -214,7 +214,7 @@ async def atender_contacto(
 @router.post("/{contacto_id}/no-atender", summary="Marcar contacto como no atendido")
 async def no_atender_contacto(
     contacto_id: UUID,
-    current_user: CurrentUser = Depends(),
+    current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
     """
