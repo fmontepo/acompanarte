@@ -80,9 +80,9 @@ def _contacto_dict(c: ContactoPublico, usuario_familiar_id: Optional[str] = None
 
 @router.get("", summary="Ver contactos derivados al terapeuta actual")
 async def mis_contactos_derivados(
-    estado: Optional[str] = None,   # derivado | atendido | no_atendido
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
+    estado: Optional[str] = None,   # derivado | atendido | no_atendido
 ):
     """
     Devuelve los contactos públicos que fueron derivados al terapeuta autenticado.
