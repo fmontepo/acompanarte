@@ -166,7 +166,9 @@ async def atender_contacto(
             raise HTTPException(status_code=500, detail="Rol 'familia' no configurado")
 
         # Generar contraseña temporal si no se proveyó una
-        password_raw = body.password or f"Temp{str(uuid4())[:8]}!"
+        import secrets as _sec
+        sufijo = _sec.token_hex(3).upper()
+        password_raw = body.password or f"Acc{sufijo}1!"
         nombre = body.nombre.strip()
         apellido = (body.apellido or "").strip()
         n = nombre[:1].upper()
@@ -179,10 +181,11 @@ async def atender_contacto(
             apellido=apellido or None,
             password_hash=_pwd.hash(password_raw),
             rol_id=rol_familia.id,
-            activo=False,          # Inactivo hasta que el admin lo active
+            activo=True,                    # Activo de inmediato — recibe credenciales
+            debe_cambiar_password=True,     # Debe cambiar la clave en el primer ingreso
             avatar_initials=f"{n}{a}" or "?",
             avatar_class="av-tl",
-            profile_label=f"Familiar · Contacto TEA derivado",
+            profile_label="Familiar · Contacto TEA derivado",
         )
         db.add(nuevo_usuario)
         await db.flush()  # obtener el ID antes del commit
@@ -201,14 +204,20 @@ async def atender_contacto(
 
     await db.commit()
 
-    return {
+    respuesta = {
         **_contacto_dict(contacto, usuario_familiar_id=nuevo_usuario_id),
         "mensaje": (
-            "Usuario familiar creado (inactivo). El admin deberá activarlo para que pueda acceder."
+            "Usuario familiar creado. Recibirá sus credenciales para acceder al sistema."
             if not usuario_existente
             else "El email ya tenía cuenta registrada. Contacto marcado como atendido."
         ),
     }
+    # Incluir contraseña temporal solo cuando se creó un usuario nuevo
+    if not usuario_existente:
+        respuesta["password_temporal"] = password_raw
+        respuesta["nombre_familiar"]   = nombre
+        respuesta["email_familiar"]    = email
+    return respuesta
 
 
 @router.post("/{contacto_id}/no-atender", summary="Marcar contacto como no atendido")

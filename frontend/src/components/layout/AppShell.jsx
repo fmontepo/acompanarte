@@ -111,6 +111,7 @@ const SCREEN_TO_PATH = {
   'admin-contactos':        '/admin/contactos',
   'admin-reglas':           '/admin/reglas-ia',
   'admin-auditoria':        '/admin/auditoria',
+  'admin-recursos':         '/admin/recursos',
 }
 
 // Ruta compartida entre roles
@@ -123,7 +124,7 @@ function resolveAlertPath(rolKey) {
 }
 
 export default function AppShell() {
-  const { user, logout, authFetch } = useAuth()
+  const { user, logout, authFetch, updateUser } = useAuth()
   const navigate  = useNavigate()
   const location  = useLocation()
   const [openModal, setOpenModal] = useState(null) // 'perfil' | 'cambiar-password'
@@ -135,6 +136,18 @@ export default function AppShell() {
   const [passOk, setPassOk]         = useState('')
   const [passSaving, setPassSaving] = useState(false)
   const [showPass, setShowPass]     = useState({ actual: false, nueva: false, confirmar: false })
+  const [forzarCambio, setForzarCambio] = useState(false)
+
+  // Si el usuario debe cambiar su contraseña, abrir el modal automáticamente
+  useEffect(() => {
+    if (user?.debe_cambiar_password) {
+      setForzarCambio(true)
+      setPassForm({ actual: '', nueva: '', confirmar: '' })
+      setPassError('')
+      setPassOk('')
+      setOpenModal('cambiar-password')
+    }
+  }, [user?.id]) // solo cuando cambia el usuario (login/refresh), no en cada render
 
   // Carga el conteo real de alertas para mostrar en el badge del sidebar
   useEffect(() => {
@@ -230,6 +243,13 @@ export default function AppShell() {
       if (res.ok) {
         setPassOk('Contraseña actualizada correctamente.')
         setPassForm({ actual: '', nueva: '', confirmar: '' })
+        // Si era un cambio forzado (primer ingreso), limpiar el flag
+        if (forzarCambio) {
+          updateUser({ debe_cambiar_password: false })
+          setForzarCambio(false)
+          // Cerrar modal después de un momento para que el usuario vea el mensaje de éxito
+          setTimeout(() => setOpenModal(null), 1800)
+        }
       } else {
         setPassError(data.detail ?? 'No se pudo actualizar la contraseña.')
       }
@@ -396,13 +416,23 @@ export default function AppShell() {
 
       {/* ── MODAL CAMBIAR CONTRASEÑA ──────────────────────────────── */}
       {openModal === 'cambiar-password' && (
-        <div className="ov open" onClick={e => e.target === e.currentTarget && setOpenModal(null)}>
+        <div className="ov open"
+          onClick={e => { if (!forzarCambio && e.target === e.currentTarget) setOpenModal(null) }}>
           <div className="mo">
             <div className="mh">
-              <div className="mt">Cambiar contraseña</div>
-              <button className="btn btn-g btn-ico btn-sm"
-                onClick={() => setOpenModal(null)}>✕</button>
+              <div className="mt">
+                {forzarCambio ? '⚠️ Debés cambiar tu contraseña' : 'Cambiar contraseña'}
+              </div>
+              {!forzarCambio && (
+                <button className="btn btn-g btn-ico btn-sm"
+                  onClick={() => setOpenModal(null)}>✕</button>
+              )}
             </div>
+            {forzarCambio && (
+              <div className="disc disc-am txs" style={{ margin: '0 0 4px 0' }}>
+                Tu cuenta fue creada con una contraseña temporal. Por seguridad, debés elegir una contraseña propia antes de continuar.
+              </div>
+            )}
             <form onSubmit={handleCambiarPassword}>
               <div className="mb">
                 {/* Contraseña actual */}

@@ -374,7 +374,10 @@ export default function TerIntConocimiento() {
                       <span className={`chip ${CAT_COLORS[a.categoria] ?? 'ch-gray'}`}>{a.categoria}</span>
                       <span className="txs tm">{a.fecha}</span>
                     </div>
-                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>{a.titulo}</div>
+                    <div className="flex ic g6" style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                      <span style={{ color: 'var(--amber)', flexShrink: 0 }} title="Recurso validado"><IcoStar /></span>
+                      <span>{a.titulo}</span>
+                    </div>
                     {expandido === a.id && (
                       <div className="ts" style={{ color: 'var(--text2)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
                         {a.resumen || <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>Sin descripción.</span>}
@@ -426,7 +429,14 @@ export default function TerIntConocimiento() {
                         <IcoBook />
                       </button>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600 }}>{a.titulo}</div>
+                        <div className="flex ic g6" style={{ fontSize: 14, fontWeight: 600 }}>
+                          {a.validado && (
+                            <span style={{ color: 'var(--amber)', flexShrink: 0 }} title="Recurso validado">
+                              <IcoStar />
+                            </span>
+                          )}
+                          <span>{a.titulo}</span>
+                        </div>
                         <div className="flex ic g6" style={{ marginTop: 4, flexWrap: 'wrap' }}>
                           <span className={`chip ${CAT_COLORS[a.categoria] ?? 'ch-gray'}`}>{a.categoria}</span>
                           {a.validado

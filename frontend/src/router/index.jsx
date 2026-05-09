@@ -32,6 +32,7 @@ import AdminUsuarios        from '../pages/admin/Usuarios'
 import AdminAuditoria       from '../pages/admin/Auditoria'
 import AdminContactos       from '../pages/admin/ContactosPublicos'
 import AdminReglasIA        from '../pages/admin/ReglasIA'
+import AdminRecursos        from '../pages/admin/Recursos'
 
 // Auth y errores
 import LoginPage        from '../pages/LoginPage'
@@ -150,6 +151,7 @@ export default function AppRouter() {
             <Route path="contactos"  element={<AdminContactos />} />
             <Route path="reglas-ia"  element={<AdminReglasIA />} />
             <Route path="auditoria"  element={<AdminAuditoria />} />
+            <Route path="recursos"   element={<AdminRecursos />} />
           </Route>
         </Route>
 

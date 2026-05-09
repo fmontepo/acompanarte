@@ -344,6 +344,9 @@ async def cambiar_password(
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     usuario.password_hash = _pwd.hash(nueva)
+    # Si el usuario tenía pendiente cambiar la contraseña (primer ingreso), limpiamos el flag
+    if getattr(usuario, 'debe_cambiar_password', False):
+        usuario.debe_cambiar_password = False
     await db.commit()
 
     return {"mensaje": "Contraseña actualizada correctamente"}

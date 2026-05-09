@@ -88,6 +88,16 @@ class Usuario(Base):
     intentos_fallidos = Column(Integer, nullable=False, default=0)
     bloqueado_hasta = Column(DateTime(timezone=True), nullable=True)
 
+    # Si True, el usuario debe cambiar su contraseña en el próximo ingreso.
+    # Se activa cuando un terapeuta crea un familiar con contraseña temporal.
+    debe_cambiar_password = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment="True cuando el usuario ingresa por primera vez con clave temporal",
+    )
+
     # ── Auditoría ──────────────────────────────────────────────────
     creado_en = Column(
         DateTime(timezone=True),

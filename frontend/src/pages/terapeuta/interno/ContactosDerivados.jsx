@@ -188,11 +188,102 @@ function ModalAtender({ contacto, onAtendido, onClose }) {
   )
 }
 
+// ─── Modal "Email simulado" con credenciales del familiar ─────────────────
+function ModalEmailSimulado({ nombre, email, password, onClose }) {
+  const [copiado, setCopiado] = useState(false)
+
+  function copiar() {
+    navigator.clipboard.writeText(password).then(() => {
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    }).catch(() => {})
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 1100, padding: 16,
+    }}>
+      <div className="card" style={{ width: '100%', maxWidth: 500, padding: '24px 28px' }}>
+        {/* Header */}
+        <div className="flex ic jb mb16">
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>✉️ Credenciales generadas</div>
+            <div className="txs" style={{ color: 'var(--text2)', marginTop: 2 }}>
+              Compartí estos datos con el familiar para que pueda ingresar
+            </div>
+          </div>
+          <button className="btn btn-g btn-sm" onClick={onClose}><IcoX /></button>
+        </div>
+
+        {/* Simulación de email */}
+        <div style={{
+          border: '1px solid var(--border)', borderRadius: 10,
+          overflow: 'hidden', marginBottom: 16,
+        }}>
+          {/* Encabezado del email */}
+          <div style={{ background: 'var(--bg2)', padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
+            <div className="txs" style={{ color: 'var(--text3)' }}>De: sistema@acompañarte.com</div>
+            <div className="txs" style={{ color: 'var(--text3)' }}>Para: <strong style={{ color: 'var(--text)' }}>{email}</strong></div>
+            <div className="txs" style={{ color: 'var(--text3)' }}>Asunto: <strong style={{ color: 'var(--text)' }}>Bienvenido/a a Acompañarte — tus credenciales de acceso</strong></div>
+          </div>
+          {/* Cuerpo del email */}
+          <div style={{ padding: '16px 20px', lineHeight: 1.65, fontSize: 13 }}>
+            <p style={{ marginBottom: 12 }}>Hola <strong>{nombre}</strong>,</p>
+            <p style={{ marginBottom: 12 }}>
+              Tu cuenta en <strong>Acompañarte</strong> fue creada exitosamente. Podés ingresar con las siguientes credenciales:
+            </p>
+            <div style={{
+              background: 'var(--bg2)', border: '1px solid var(--border)',
+              borderRadius: 8, padding: '12px 16px', marginBottom: 12,
+            }}>
+              <div className="flex ic jb mb6">
+                <span className="txs" style={{ color: 'var(--text2)' }}>Usuario (email):</span>
+                <strong style={{ fontSize: 13 }}>{email}</strong>
+              </div>
+              <div className="flex ic jb">
+                <span className="txs" style={{ color: 'var(--text2)' }}>Contraseña temporal:</span>
+                <div className="flex ic g8">
+                  <strong style={{ fontSize: 15, letterSpacing: 1, color: 'var(--purple)' }}>{password}</strong>
+                  <button className="btn btn-g btn-xs" onClick={copiar} title="Copiar contraseña">
+                    {copiado ? '✓' : (
+                      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path strokeLinecap="round" d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p style={{ marginBottom: 8, color: 'var(--text2)' }}>
+              ⚠️ <strong>Al ingresar por primera vez</strong>, el sistema te pedirá que elijas una contraseña personal.
+            </p>
+            <p style={{ color: 'var(--text2)' }}>
+              Ingresá en: <strong>acompañarte.com.ar</strong>
+            </p>
+          </div>
+        </div>
+
+        <div className="disc disc-tl txs" style={{ marginBottom: 16 }}>
+          Esta contraseña es de un solo uso. El familiar deberá cambiarla al ingresar por primera vez.
+        </div>
+
+        <div className="flex g8" style={{ justifyContent: 'flex-end' }}>
+          <button className="btn btn-p btn-sm" onClick={onClose}>Entendido</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Tarjeta de contacto ──────────────────────────────────────────────────
 function ContactoCard({ contacto, onUpdate }) {
   const { authFetch }     = useAuth()
   const [expanded,  setExpanded]  = useState(false)
   const [modal,     setModal]     = useState(false)
+  const [emailModal, setEmailModal] = useState(null)  // { nombre, email, password }
   const [loadingNo, setLoadingNo] = useState(false)
   const [toast,     setToast]     = useState('')
 
@@ -219,8 +310,27 @@ function ContactoCard({ contacto, onUpdate }) {
       {modal && (
         <ModalAtender
           contacto={contacto}
-          onAtendido={data => { setModal(false); onUpdate(data) }}
+          onAtendido={data => {
+            setModal(false)
+            onUpdate(data)
+            // Si el backend devolvió una contraseña temporal, mostrar el email simulado
+            if (data.password_temporal) {
+              setEmailModal({
+                nombre:   data.nombre_familiar  ?? contacto.nombre,
+                email:    data.email_familiar    ?? contacto.mail ?? '',
+                password: data.password_temporal,
+              })
+            }
+          }}
           onClose={() => setModal(false)}
+        />
+      )}
+      {emailModal && (
+        <ModalEmailSimulado
+          nombre={emailModal.nombre}
+          email={emailModal.email}
+          password={emailModal.password}
+          onClose={() => setEmailModal(null)}
         />
       )}
 

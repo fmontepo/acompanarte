@@ -125,6 +125,18 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [token])
 
+  // ── updateUser ───────────────────────────────────────────────
+  // Actualiza campos parciales del objeto user en estado y localStorage.
+  // Uso: updateUser({ debe_cambiar_password: false })
+  const updateUser = useCallback((patch) => {
+    setUser(prev => {
+      if (!prev) return prev
+      const updated = { ...prev, ...patch }
+      localStorage.setItem('acompanarte_user', JSON.stringify(updated))
+      return updated
+    })
+  }, [])
+
   // ── hasRole ──────────────────────────────────────────────────
   // Verifica si el usuario tiene uno de los roles indicados.
   // Uso: hasRole('ter-int', 'admin')
@@ -147,7 +159,7 @@ export function AuthProvider({ children }) {
   }, [token])
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, hasRole, authFetch, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, hasRole, authFetch, isLoading, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

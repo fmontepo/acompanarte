@@ -18,11 +18,12 @@ from app.db.session import AsyncSessionLocal
 
 ADMIN_NAV = [
     {"section": "Sistema", "items": [
-        {"id": "admin-dash",      "icon": "home",       "label": "Panel de inicio"},
-        {"id": "admin-usuarios",  "icon": "users",      "label": "Usuarios"},
-        {"id": "admin-contactos", "icon": "mail",       "label": "Contactos TEA"},
-        {"id": "admin-reglas",    "icon": "shield",     "label": "Reglas IA"},
-        {"id": "admin-auditoria", "icon": "bar-chart",  "label": "Auditoría"},
+        {"id": "admin-dash",      "icon": "home",      "label": "Panel de inicio"},
+        {"id": "admin-usuarios",  "icon": "users",     "label": "Usuarios"},
+        {"id": "admin-contactos", "icon": "mail",      "label": "Contactos TEA"},
+        {"id": "admin-reglas",    "icon": "shield",    "label": "Reglas IA"},
+        {"id": "admin-recursos",  "icon": "book",      "label": "Base de conocimiento"},
+        {"id": "admin-auditoria", "icon": "bar-chart", "label": "Auditoría"},
     ]},
 ]
 
