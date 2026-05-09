@@ -101,11 +101,11 @@ async def mis_contactos_derivados(
         .where(ContactoPublico.derivado_a_id == terapeuta.id)
         .order_by(ContactoPublico.derivado_en.desc())
     )
-    if estado in ("derivado", "atendido", "no_atendido"):
+    if estado in ("derivado", "atendido", "rechazado"):
         q = q.where(ContactoPublico.estado == estado)
     else:
-        # Por defecto mostrar solo los pendientes de resolución
-        q = q.where(ContactoPublico.estado.in_(["derivado", "atendido", "no_atendido"]))
+        # Por defecto mostrar todos los que llegaron al terapeuta
+        q = q.where(ContactoPublico.estado.in_(["derivado", "atendido", "rechazado"]))
 
     result = await db.execute(q)
     contactos = result.scalars().all()
@@ -238,10 +238,10 @@ async def no_atender_contacto(
     if not contacto:
         raise HTTPException(status_code=404, detail="Contacto no encontrado o no derivado a vos")
 
-    if contacto.estado == "no_atendido":
-        raise HTTPException(status_code=409, detail="Este contacto ya fue marcado como no atendido")
+    if contacto.estado == "rechazado":
+        raise HTTPException(status_code=409, detail="Este contacto ya fue rechazado")
 
-    contacto.estado = "no_atendido"
+    contacto.estado = "rechazado"
     await db.commit()
 
     return _contacto_dict(contacto)

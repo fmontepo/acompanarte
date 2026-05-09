@@ -52,9 +52,9 @@ function formatFecha(iso) {
 }
 
 const ESTADO_CONFIG = {
-  derivado:    { label: 'Pendiente',    bg: 'rgba(245,158,11,0.12)', color: '#b45309' },
-  atendido:    { label: 'Atendido',     bg: 'rgba(16,185,129,0.12)', color: '#047857' },
-  no_atendido: { label: 'No atendido',  bg: 'rgba(239,68,68,0.12)',  color: '#b91c1c' },
+  derivado:   { label: 'Pendiente',  bg: 'rgba(245,158,11,0.12)', color: '#b45309' },
+  atendido:   { label: 'Atendido',   bg: 'rgba(16,185,129,0.12)', color: '#047857' },
+  rechazado:  { label: 'Rechazado',  bg: 'rgba(239,68,68,0.12)',  color: '#b91c1c' },
 }
 
 function EstadoBadge({ estado }) {
@@ -212,7 +212,7 @@ function ContactoCard({ contacto, onUpdate }) {
     }
   }
 
-  const esPendiente = contacto.estado === 'derivado'
+  const esPendiente = contacto.estado === 'derivado' || contacto.estado === 'rechazado'
 
   return (
     <>
@@ -386,8 +386,8 @@ export default function ContactosDerivados() {
   function onUpdate(updated) {
     setContactos(prev => prev.map(c => c.id === updated.id ? updated : c))
     showToast(
-      updated.estado === 'atendido'    ? '✓ Contacto atendido. Usuario familiar creado.' :
-      updated.estado === 'no_atendido' ? 'Contacto marcado como No Atendido.'           :
+      updated.estado === 'atendido'   ? '✓ Contacto atendido. Usuario familiar creado.' :
+      updated.estado === 'rechazado'  ? 'Contacto rechazado. El admin puede reasignarlo.' :
       'Contacto actualizado.',
       'ok'
     )
@@ -399,10 +399,10 @@ export default function ContactosDerivados() {
   }, {})
 
   const FILTROS = [
-    { key: 'todos',       label: 'Todos' },
-    { key: 'derivado',    label: 'Pendientes' },
-    { key: 'atendido',    label: 'Atendidos' },
-    { key: 'no_atendido', label: 'No atendidos' },
+    { key: 'todos',      label: 'Todos' },
+    { key: 'derivado',   label: 'Pendientes' },
+    { key: 'atendido',   label: 'Atendidos' },
+    { key: 'rechazado',  label: 'Rechazados' },
   ]
 
   return (
@@ -424,9 +424,9 @@ export default function ContactosDerivados() {
       {!loading && contactos.length > 0 && (
         <div className="flex g10 mb16" style={{ flexWrap: 'wrap' }}>
           {[
-            { label: 'Pendientes',    val: counts.derivado ?? 0,    color: '#b45309' },
-            { label: 'Atendidos',     val: counts.atendido ?? 0,    color: '#047857' },
-            { label: 'No atendidos',  val: counts.no_atendido ?? 0, color: '#b91c1c' },
+            { label: 'Pendientes',  val: counts.derivado  ?? 0, color: '#b45309' },
+            { label: 'Atendidos',   val: counts.atendido  ?? 0, color: '#047857' },
+            { label: 'Rechazados',  val: counts.rechazado ?? 0, color: '#b91c1c' },
           ].map(s => (
             <div key={s.label} className="card" style={{ padding: '10px 16px', textAlign: 'center', minWidth: 90 }}>
               <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.val}</div>

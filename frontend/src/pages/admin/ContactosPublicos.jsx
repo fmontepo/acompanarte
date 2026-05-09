@@ -193,7 +193,15 @@ function FilaContacto({ contacto: initial, terapeutas, onActualizado }) {
     onActualizado(updated)
   }
 
-  const pendiente = contacto.estado === 'pendiente'
+  const ESTADO_BADGE = {
+    pendiente:  { cls: 'ch-am',      label: 'Pendiente'  },
+    derivado:   { cls: 'ch-teal',    label: 'Derivado'   },
+    rechazado:  { cls: 'ch-red',     label: 'Rechazado'  },
+    atendido:   { cls: 'ch-green',   label: 'Atendido'   },
+  }
+  const badge      = ESTADO_BADGE[contacto.estado] ?? { cls: 'ch-am', label: contacto.estado }
+  const puedeReasignar = ['pendiente', 'rechazado'].includes(contacto.estado)
+  const puedeDeriva   = contacto.estado !== 'atendido'
 
   return (
     <>
@@ -230,9 +238,7 @@ function FilaContacto({ contacto: initial, terapeutas, onActualizado }) {
           </div>
         </td>
         <td style={{ padding: '12px 14px' }}>
-          <span className={`chip ${pendiente ? 'ch-am' : 'ch-teal'}`}>
-            {pendiente ? 'Pendiente' : 'Derivado'}
-          </span>
+          <span className={`chip ${badge.cls}`}>{badge.label}</span>
         </td>
         <td style={{ padding: '12px 14px', fontSize: 12, color: 'var(--text2)' }}>
           {contacto.terapeuta
@@ -241,13 +247,15 @@ function FilaContacto({ contacto: initial, terapeutas, onActualizado }) {
           }
         </td>
         <td style={{ padding: '12px 14px' }}>
-          <button
-            className={`btn btn-sm ${pendiente ? 'btn-p' : 'btn-s'}`}
-            style={{ fontSize: 12 }}
-            onClick={e => { e.stopPropagation(); setModal(true) }}
-          >
-            {pendiente ? 'Derivar →' : 'Reasignar'}
-          </button>
+          {puedeDeriva && (
+            <button
+              className={`btn btn-sm ${puedeReasignar ? 'btn-p' : 'btn-s'}`}
+              style={{ fontSize: 12 }}
+              onClick={e => { e.stopPropagation(); setModal(true) }}
+            >
+              {contacto.estado === 'pendiente' ? 'Derivar →' : 'Reasignar'}
+            </button>
+          )}
         </td>
       </tr>
 
@@ -364,9 +372,11 @@ export default function AdminContactosPublicos() {
   }, [contactos, filtroEstado])
 
   const stats = useMemo(() => ({
-    total:    contactos.length,
+    total:     contactos.length,
     pendiente: contactos.filter(c => c.estado === 'pendiente').length,
     derivado:  contactos.filter(c => c.estado === 'derivado').length,
+    rechazado: contactos.filter(c => c.estado === 'rechazado').length,
+    atendido:  contactos.filter(c => c.estado === 'atendido').length,
   }), [contactos])
 
   return (
@@ -386,11 +396,12 @@ export default function AdminContactosPublicos() {
       </div>
 
       {/* ── KPIs ────────────────────────────────────────────────── */}
-      <div className="g4 mb20" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+      <div className="g4 mb20" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {[
-          { label: 'Total recibidos',  value: stats.total,     color: 'var(--teal)',   bg: 'var(--teal2)' },
-          { label: 'Pendientes',       value: stats.pendiente, color: 'var(--amber)',  bg: 'var(--amber2)' },
-          { label: 'Derivados',        value: stats.derivado,  color: 'var(--purple)', bg: 'var(--purple2)' },
+          { label: 'Pendientes',  value: stats.pendiente, color: 'var(--amber)',  bg: 'var(--amber2)' },
+          { label: 'Derivados',   value: stats.derivado,  color: 'var(--purple)', bg: 'var(--purple2)' },
+          { label: 'Rechazados',  value: stats.rechazado, color: 'var(--danger)', bg: 'rgba(229,62,62,0.08)' },
+          { label: 'Atendidos',   value: stats.atendido,  color: 'var(--teal)',   bg: 'var(--teal2)' },
         ].map(s => (
           <div key={s.label} className="stat">
             <div className="sn" style={{ color: s.color }}>{s.value}</div>
@@ -404,9 +415,11 @@ export default function AdminContactosPublicos() {
         <div className="flex ic g8">
           <span style={{ fontSize: 13, color: 'var(--text2)' }}>Filtrar por estado:</span>
           {[
-            { value: 'todos',     label: 'Todos' },
-            { value: 'pendiente', label: 'Pendientes' },
-            { value: 'derivado',  label: 'Derivados' },
+            { value: 'todos',     label: 'Todos',      count: null },
+            { value: 'pendiente', label: 'Pendientes', count: stats.pendiente },
+            { value: 'derivado',  label: 'Derivados',  count: stats.derivado },
+            { value: 'rechazado', label: 'Rechazados', count: stats.rechazado },
+            { value: 'atendido',  label: 'Atendidos',  count: stats.atendido },
           ].map(f => (
             <button
               key={f.value}
@@ -415,13 +428,13 @@ export default function AdminContactosPublicos() {
               onClick={() => setFiltroEstado(f.value)}
             >
               {f.label}
-              {f.value !== 'todos' && (
+              {f.count !== null && (
                 <span style={{
                   marginLeft: 5,
                   background: filtroEstado === f.value ? 'rgba(255,255,255,0.25)' : 'var(--bg3)',
                   borderRadius: 20, padding: '0 5px', fontSize: 10, fontWeight: 700,
                 }}>
-                  {f.value === 'pendiente' ? stats.pendiente : stats.derivado}
+                  {f.count}
                 </span>
               )}
             </button>
