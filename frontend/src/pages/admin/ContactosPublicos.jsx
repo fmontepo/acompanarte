@@ -194,10 +194,10 @@ function FilaContacto({ contacto: initial, terapeutas, onActualizado }) {
   }
 
   const ESTADO_BADGE = {
-    pendiente:  { cls: 'ch-am',      label: 'Pendiente'  },
-    derivado:   { cls: 'ch-teal',    label: 'Derivado'   },
-    rechazado:  { cls: 'ch-red',     label: 'Rechazado'  },
-    atendido:   { cls: 'ch-green',   label: 'Atendido'   },
+    pendiente:  { cls: 'ch-am',   label: 'Pendiente'  },
+    derivado:   { cls: 'ch-pp',   label: 'Derivado'   },
+    rechazado:  { cls: 'ch-rd',   label: 'Rechazado'  },
+    atendido:   { cls: 'ch-teal', label: 'Atendido'   },
   }
   const badge      = ESTADO_BADGE[contacto.estado] ?? { cls: 'ch-am', label: contacto.estado }
   const puedeReasignar = ['pendiente', 'rechazado'].includes(contacto.estado)
