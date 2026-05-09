@@ -2,11 +2,14 @@
 # CRUD de usuarios — protegido por rol
 # Solo administradores pueden listar y modificar usuarios
 
+import re
+import secrets
 from typing import List
 from uuid import UUID
 import uuid as _uuid
 
 from fastapi import APIRouter, HTTPException, status, Depends
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from passlib.context import CryptContext
@@ -18,6 +21,13 @@ from app.models.familiar import Familiar
 from app.models.terapeuta import Terapeuta
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
 from app.api.deps import CurrentUser, require_roles
+
+
+# ── Schemas adicionales ────────────────────────────────────────────────────────
+
+class CambiarPasswordRequest(BaseModel):
+    password_actual: str
+    password_nuevo: str
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -244,3 +254,96 @@ async def desactivar_usuario(
     # Soft delete — nunca borrar físicamente
     usuario.activo = False
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/usuarios/{id}/desbloquear — solo admin
+# Resetea el bloqueo y genera una contraseña temporal que se devuelve al admin.
+# ---------------------------------------------------------------------------
+@router.post(
+    "/{usuario_id}/desbloquear",
+    dependencies=[Depends(require_roles("admin"))],
+    summary="Desbloquear usuario y generar contraseña temporal (admin)",
+)
+async def desbloquear_usuario(
+    usuario_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Usuario).where(Usuario.id == usuario_id))
+    usuario = result.scalar_one_or_none()
+    if not usuario:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    # Generar contraseña temporal segura: cumple los requisitos (8+ chars, mayúsc, dígito)
+    sufijo = secrets.token_hex(3).upper()   # 6 hex en mayúsculas
+    temp_pass = f"Acc{sufijo}1!"            # e.g. "AccA3F9B21!"  (10 chars)
+
+    usuario.bloqueado         = False
+    usuario.intentos_fallidos = 0
+    usuario.bloqueado_hasta   = None
+    usuario.activo            = True        # reactivar también si estaba inactivo
+    usuario.password_hash     = _pwd.hash(temp_pass)
+
+    await db.commit()
+    await db.refresh(usuario)
+
+    return {
+        "id":                str(usuario.id),
+        "nombre":            usuario.nombre,
+        "apellido":          usuario.apellido,
+        "email":             usuario.email,
+        "bloqueado":         usuario.bloqueado,
+        "activo":            usuario.activo,
+        "password_temporal": temp_pass,
+        "mensaje": "Usuario desbloqueado. Compartí la contraseña temporal con el usuario para que pueda ingresar.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/usuarios/{id}/cambiar-password — propio usuario
+# Requiere la contraseña actual y acepta una nueva que cumpla los requisitos.
+# ---------------------------------------------------------------------------
+@router.post(
+    "/{usuario_id}/cambiar-password",
+    summary="Cambiar contraseña propia",
+)
+async def cambiar_password(
+    usuario_id: UUID,
+    data: CambiarPasswordRequest,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    # Solo puede cambiar su propia contraseña (admins no pueden cambiársela a otros por esta vía)
+    if current_user.id != usuario_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No podés cambiar la contraseña de otro usuario",
+        )
+
+    # Verificar contraseña actual
+    if not _pwd.verify(data.password_actual, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La contraseña actual es incorrecta",
+        )
+
+    # Validar requisitos de la nueva contraseña
+    nueva = data.password_nuevo
+    if len(nueva) < 8:
+        raise HTTPException(status_code=422, detail="La nueva contraseña debe tener al menos 8 caracteres")
+    if not re.search(r"[A-Z]", nueva):
+        raise HTTPException(status_code=422, detail="La nueva contraseña debe contener al menos una mayúscula")
+    if not re.search(r"\d", nueva):
+        raise HTTPException(status_code=422, detail="La nueva contraseña debe contener al menos un número")
+    if nueva == data.password_actual:
+        raise HTTPException(status_code=422, detail="La nueva contraseña debe ser diferente a la actual")
+
+    result = await db.execute(select(Usuario).where(Usuario.id == usuario_id))
+    usuario = result.scalar_one_or_none()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    usuario.password_hash = _pwd.hash(nueva)
+    await db.commit()
+
+    return {"mensaje": "Contraseña actualizada correctamente"}

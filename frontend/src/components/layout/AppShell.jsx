@@ -126,8 +126,15 @@ export default function AppShell() {
   const { user, logout, authFetch } = useAuth()
   const navigate  = useNavigate()
   const location  = useLocation()
-  const [openModal, setOpenModal] = useState(null) // 'perfil'
+  const [openModal, setOpenModal] = useState(null) // 'perfil' | 'cambiar-password'
   const [alertBadge, setAlertBadge] = useState(0)
+
+  // ── Estado del formulario Cambiar Contraseña ────────────────────
+  const [passForm, setPassForm] = useState({ actual: '', nueva: '', confirmar: '' })
+  const [passError, setPassError]   = useState('')
+  const [passOk, setPassOk]         = useState('')
+  const [passSaving, setPassSaving] = useState(false)
+  const [showPass, setShowPass]     = useState({ actual: false, nueva: false, confirmar: false })
 
   // Carga el conteo real de alertas para mostrar en el badge del sidebar
   useEffect(() => {
@@ -183,6 +190,54 @@ export default function AppShell() {
   async function handleLogout() {
     await logout()
     navigate('/login', { replace: true })
+  }
+
+  function abrirCambiarPassword() {
+    setPassForm({ actual: '', nueva: '', confirmar: '' })
+    setPassError('')
+    setPassOk('')
+    setOpenModal('cambiar-password')
+  }
+
+  async function handleCambiarPassword(e) {
+    e.preventDefault()
+    setPassError('')
+    setPassOk('')
+
+    if (!passForm.actual || !passForm.nueva || !passForm.confirmar) {
+      setPassError('Todos los campos son obligatorios.'); return
+    }
+    if (passForm.nueva !== passForm.confirmar) {
+      setPassError('La nueva contraseña y la confirmación no coinciden.'); return
+    }
+    if (passForm.nueva.length < 8) {
+      setPassError('La nueva contraseña debe tener al menos 8 caracteres.'); return
+    }
+    if (!/[A-Z]/.test(passForm.nueva)) {
+      setPassError('La nueva contraseña debe contener al menos una letra mayúscula.'); return
+    }
+    if (!/\d/.test(passForm.nueva)) {
+      setPassError('La nueva contraseña debe contener al menos un número.'); return
+    }
+
+    setPassSaving(true)
+    try {
+      const res = await authFetch(`/usuarios/${user.id}/cambiar-password`, {
+        method: 'POST',
+        body: JSON.stringify({ password_actual: passForm.actual, password_nuevo: passForm.nueva }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setPassOk('Contraseña actualizada correctamente.')
+        setPassForm({ actual: '', nueva: '', confirmar: '' })
+      } else {
+        setPassError(data.detail ?? 'No se pudo actualizar la contraseña.')
+      }
+    } catch {
+      setPassError('Error de conexión. Intentá de nuevo.')
+    } finally {
+      setPassSaving(false)
+    }
   }
 
   return (
@@ -324,10 +379,88 @@ export default function AppShell() {
               <button className="btn btn-s" onClick={() => setOpenModal(null)}>
                 Cerrar
               </button>
+              <button className="btn btn-g btn-sm" onClick={abrirCambiarPassword}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                </svg>
+                Cambiar contraseña
+              </button>
               <button className="btn btn-rd btn-sm" onClick={handleLogout}>
                 Cerrar sesión
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL CAMBIAR CONTRASEÑA ──────────────────────────────── */}
+      {openModal === 'cambiar-password' && (
+        <div className="ov open" onClick={e => e.target === e.currentTarget && setOpenModal(null)}>
+          <div className="mo">
+            <div className="mh">
+              <div className="mt">Cambiar contraseña</div>
+              <button className="btn btn-g btn-ico btn-sm"
+                onClick={() => setOpenModal(null)}>✕</button>
+            </div>
+            <form onSubmit={handleCambiarPassword}>
+              <div className="mb">
+                {/* Contraseña actual */}
+                {[
+                  { key: 'actual',    label: 'Contraseña actual',    placeholder: 'Tu contraseña actual' },
+                  { key: 'nueva',     label: 'Nueva contraseña',     placeholder: 'Mínimo 8 caracteres' },
+                  { key: 'confirmar', label: 'Confirmar contraseña', placeholder: 'Repetí la nueva contraseña' },
+                ].map(({ key, label, placeholder }) => (
+                  <div className="fg" key={key}>
+                    <label className="fl">{label} *</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="fi"
+                        type={showPass[key] ? 'text' : 'password'}
+                        value={passForm[key]}
+                        onChange={e => { setPassForm(f => ({ ...f, [key]: e.target.value })); setPassError(''); setPassOk('') }}
+                        placeholder={placeholder}
+                        style={{ paddingRight: 40 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPass(s => ({ ...s, [key]: !s[key] }))}
+                        style={{
+                          position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: 'var(--text3)', padding: 2, lineHeight: 1,
+                        }}
+                        tabIndex={-1}
+                      >
+                        {showPass[key] ? (
+                          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                          </svg>
+                        ) : (
+                          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path strokeLinecap="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div className="txs tm" style={{ marginTop: -6 }}>
+                  Mínimo 8 caracteres, una mayúscula y un número.
+                </div>
+                {passError && <div className="disc disc-rd txs">{passError}</div>}
+                {passOk    && <div className="disc disc-tl txs">{passOk}</div>}
+              </div>
+              <div className="mf">
+                <button type="button" className="btn btn-s" onClick={() => setOpenModal(null)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-p" disabled={passSaving}>
+                  {passSaving ? 'Guardando…' : 'Actualizar contraseña'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

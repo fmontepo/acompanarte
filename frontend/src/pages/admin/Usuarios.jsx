@@ -22,6 +22,18 @@ const IcoToggle = () => (
     <path strokeLinecap="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
   </svg>
 )
+const IcoUnlock = () => (
+  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+    <path strokeLinecap="round" d="M7 11V7a5 5 0 019.9-1"/>
+  </svg>
+)
+const IcoCopy = () => (
+  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+    <rect x="9" y="9" width="13" height="13" rx="2"/>
+    <path strokeLinecap="round" d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+  </svg>
+)
 const IcoClose = () => (
   <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
     <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12"/>
@@ -42,17 +54,24 @@ const ROLES = [
   { key: 'ter-ext', label: 'Terapeuta Externo',   chipClass: 'ch-blu',  avClass: 'av-bu' },
 ]
 
+// Badge de estado — prioridad: Bloqueado > Inactivo > Activo
+function getEstadoBadge(u) {
+  if (u.bloqueado) return { cls: 'ch-rd', label: 'Bloqueado' }
+  if (!u.activo)   return { cls: 'ch-gray', label: 'Inactivo' }
+  return { cls: 'ch-teal', label: 'Activo' }
+}
+
 const MOCK_USUARIOS = [
-  { id: 1,  nombre: 'Fernando',  apellido: 'Montepó',  email: 'fmontepo@gmail.com',      rol_key: 'admin',   activo: true,  ultimo_acceso: '2026-04-14T09:30:00', fecha_alta: '2026-01-01' },
-  { id: 2,  nombre: 'María',     apellido: 'González', email: 'maria.g@mail.com',         rol_key: 'familia', activo: true,  ultimo_acceso: '2026-04-14T08:12:00', fecha_alta: '2026-02-10' },
-  { id: 3,  nombre: 'Luis',      apellido: 'Herrera',  email: 'l.herrera@clinica.com',    rol_key: 'ter-int', activo: true,  ultimo_acceso: '2026-04-13T17:45:00', fecha_alta: '2026-01-15' },
-  { id: 4,  nombre: 'Ana',       apellido: 'Torres',   email: 'ana.torres@mail.com',      rol_key: 'familia', activo: true,  ultimo_acceso: '2026-04-14T10:05:00', fecha_alta: '2026-03-22' },
-  { id: 5,  nombre: 'Carlos',    apellido: 'Méndez',   email: 'carlos.m@mail.com',        rol_key: 'familia', activo: true,  ultimo_acceso: '2026-04-12T14:20:00', fecha_alta: '2026-02-28' },
-  { id: 6,  nombre: 'Silvia',    apellido: 'Suárez',   email: 's.suarez@terapeutas.com',  rol_key: 'ter-ext', activo: true,  ultimo_acceso: '2026-04-13T09:00:00', fecha_alta: '2026-01-20' },
-  { id: 7,  nombre: 'Jorge',     apellido: 'Fernández',email: 'jorge.fernandez@mail.com', rol_key: 'familia', activo: false, ultimo_acceso: '2026-03-30T11:10:00', fecha_alta: '2026-03-01' },
-  { id: 8,  nombre: 'Patricia',  apellido: 'Ruiz',     email: 'p.ruiz@clinica.com',       rol_key: 'ter-int', activo: true,  ultimo_acceso: '2026-04-11T16:30:00', fecha_alta: '2026-01-15' },
-  { id: 9,  nombre: 'Roberto',   apellido: 'Castro',   email: 'r.castro@terapeutas.com',  rol_key: 'ter-ext', activo: true,  ultimo_acceso: '2026-04-10T10:00:00', fecha_alta: '2026-02-05' },
-  { id: 10, nombre: 'Elena',     apellido: 'Morales',  email: 'elena.m@mail.com',         rol_key: 'familia', activo: true,  ultimo_acceso: '2026-04-09T08:45:00', fecha_alta: '2026-03-15' },
+  { id: 1,  nombre: 'Fernando',  apellido: 'Montepó',  email: 'fmontepo@gmail.com',      rol_key: 'admin',   activo: true,  bloqueado: false, ultimo_acceso: '2026-04-14T09:30:00', fecha_alta: '2026-01-01' },
+  { id: 2,  nombre: 'María',     apellido: 'González', email: 'maria.g@mail.com',         rol_key: 'familia', activo: true,  bloqueado: false, ultimo_acceso: '2026-04-14T08:12:00', fecha_alta: '2026-02-10' },
+  { id: 3,  nombre: 'Luis',      apellido: 'Herrera',  email: 'l.herrera@clinica.com',    rol_key: 'ter-int', activo: true,  bloqueado: true,  ultimo_acceso: '2026-04-13T17:45:00', fecha_alta: '2026-01-15' },
+  { id: 4,  nombre: 'Ana',       apellido: 'Torres',   email: 'ana.torres@mail.com',      rol_key: 'familia', activo: true,  bloqueado: false, ultimo_acceso: '2026-04-14T10:05:00', fecha_alta: '2026-03-22' },
+  { id: 5,  nombre: 'Carlos',    apellido: 'Méndez',   email: 'carlos.m@mail.com',        rol_key: 'familia', activo: true,  bloqueado: false, ultimo_acceso: '2026-04-12T14:20:00', fecha_alta: '2026-02-28' },
+  { id: 6,  nombre: 'Silvia',    apellido: 'Suárez',   email: 's.suarez@terapeutas.com',  rol_key: 'ter-ext', activo: true,  bloqueado: false, ultimo_acceso: '2026-04-13T09:00:00', fecha_alta: '2026-01-20' },
+  { id: 7,  nombre: 'Jorge',     apellido: 'Fernández',email: 'jorge.fernandez@mail.com', rol_key: 'familia', activo: false, bloqueado: false, ultimo_acceso: '2026-03-30T11:10:00', fecha_alta: '2026-03-01' },
+  { id: 8,  nombre: 'Patricia',  apellido: 'Ruiz',     email: 'p.ruiz@clinica.com',       rol_key: 'ter-int', activo: true,  bloqueado: false, ultimo_acceso: '2026-04-11T16:30:00', fecha_alta: '2026-01-15' },
+  { id: 9,  nombre: 'Roberto',   apellido: 'Castro',   email: 'r.castro@terapeutas.com',  rol_key: 'ter-ext', activo: true,  bloqueado: false, ultimo_acceso: '2026-04-10T10:00:00', fecha_alta: '2026-02-05' },
+  { id: 10, nombre: 'Elena',     apellido: 'Morales',  email: 'elena.m@mail.com',         rol_key: 'familia', activo: true,  bloqueado: false, ultimo_acceso: '2026-04-09T08:45:00', fecha_alta: '2026-03-15' },
 ]
 
 function getRolMeta(key) {
@@ -107,9 +126,8 @@ function ModalUsuario({ usuario, onClose, onSave }) {
       if (!/\d/.test(form.password)) { setError('La contraseña debe contener al menos un número.'); return }
     }
     setSaving(true)
-    await new Promise(r => setTimeout(r, 600))
+    await onSave(form)
     setSaving(false)
-    onSave(form)
   }
 
   return (
@@ -196,6 +214,63 @@ function ModalUsuario({ usuario, onClose, onSave }) {
   )
 }
 
+// ─── Modal Contraseña Temporal (resultado de desbloqueo) ─────────────────
+function ModalPassTemporal({ usuario, password, onClose }) {
+  const [copiado, setCopiado] = useState(false)
+
+  function copiar() {
+    navigator.clipboard.writeText(password).then(() => {
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    })
+  }
+
+  return (
+    <div className="ov open" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="mo">
+        <div className="mh">
+          <div className="mt">Usuario desbloqueado</div>
+          <button className="btn btn-g btn-sm" onClick={onClose}><IcoClose /></button>
+        </div>
+        <div className="mb">
+          <div className="disc disc-tl txs" style={{ marginBottom: 16 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+              <path strokeLinecap="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>
+              <strong>{usuario.nombre} {usuario.apellido}</strong> fue desbloqueado y reactivado.
+              Compartí la siguiente contraseña temporal con el usuario para que pueda ingresar.
+            </span>
+          </div>
+          <div className="fg">
+            <label className="fl">Contraseña temporal</label>
+            <div className="flex ic g8">
+              <input
+                className="fi"
+                value={password}
+                readOnly
+                style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 700, letterSpacing: 2, flex: 1 }}
+              />
+              <button className="btn btn-s btn-sm" onClick={copiar} style={{ flexShrink: 0 }}>
+                <IcoCopy /> {copiado ? 'Copiado' : 'Copiar'}
+              </button>
+            </div>
+          </div>
+          <div className="disc disc-am txs" style={{ marginTop: 8 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+              <path strokeLinecap="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            El usuario deberá cambiar su contraseña al ingresar. Esta contraseña no volverá a mostrarse.
+          </div>
+        </div>
+        <div className="mf">
+          <button className="btn btn-p" onClick={onClose}>Entendido</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Página principal ────────────────────────────────────────────────────
 export default function AdminUsuarios() {
   const { authFetch } = useAuth()
@@ -207,16 +282,17 @@ export default function AdminUsuarios() {
   const [filtroAct, setFiltroAct] = useState('todos')
   const [sortCol, setSortCol]     = useState('nombre')
   const [sortDir, setSortDir]     = useState('asc')
-  const [modal, setModal]         = useState(null)
+  const [modal, setModal]         = useState(null)   // { modo: 'crear'|'editar'|'pass-temp', usuario?, password? }
   const [toast, setToast]         = useState({ msg: '', ok: true })
 
   // Normaliza el objeto usuario del backend al shape esperado por la tabla
   function normalizeUser(u) {
     return {
       ...u,
-      rol_key:      u.rol_key ?? u.rol ?? 'familia',   // backend devuelve "rol", frontend usa "rol_key"
-      fecha_alta:   u.fecha_alta   ?? u.creado_en,     // backend devuelve "creado_en"
-      ultimo_acceso: u.ultimo_acceso ?? u.ultimo_login, // backend devuelve "ultimo_login"
+      rol_key:       u.rol_key ?? u.rol ?? 'familia',
+      fecha_alta:    u.fecha_alta   ?? u.creado_en,
+      ultimo_acceso: u.ultimo_acceso ?? u.ultimo_login,
+      bloqueado:     u.bloqueado ?? false,
     }
   }
 
@@ -233,7 +309,7 @@ export default function AdminUsuarios() {
           setUsuarios([])
         }
       } catch {
-        setUsuarios(MOCK_USUARIOS)  // error de red → mock
+        setUsuarios(MOCK_USUARIOS)
       } finally {
         setLoading(false)
       }
@@ -255,7 +331,7 @@ export default function AdminUsuarios() {
             nombre:   form.nombre,
             apellido: form.apellido,
             email:    form.email,
-            rol:      form.rol_key,   // backend espera 'rol', no 'rol_key'
+            rol:      form.rol_key,
             password: form.password,
           }),
         })
@@ -263,17 +339,16 @@ export default function AdminUsuarios() {
           const nuevo = normalizeUser(await res.json())
           setUsuarios(u => [nuevo, ...u])
           showToast('Usuario creado correctamente.')
+          setModal(null)
         } else {
           const err = await res.json().catch(() => ({}))
           const msg = Array.isArray(err.detail)
             ? err.detail.map(e => e.msg).join('. ')
             : (err.detail ?? 'Error al crear el usuario.')
           showToast(msg, false)
-          return
         }
       } catch {
         showToast('Error de conexión.', false)
-        return
       }
     } else {
       try {
@@ -290,26 +365,23 @@ export default function AdminUsuarios() {
           const actualizado = normalizeUser(await res.json())
           setUsuarios(u => u.map(x => x.id === modal.usuario.id ? actualizado : x))
           showToast('Cambios guardados correctamente.')
+          setModal(null)
         } else {
           const err = await res.json().catch(() => ({}))
           const msg = Array.isArray(err.detail)
             ? err.detail.map(e => e.msg).join('. ')
             : (err.detail ?? 'Error al guardar los cambios.')
           showToast(msg, false)
-          return
         }
       } catch {
         showToast('Error de conexión.', false)
-        return
       }
     }
-    setModal(null)
   }
 
   async function toggleActivo(id) {
     const u = usuarios.find(x => x.id === id)
     if (!u) return
-    // Actualización optimista
     setUsuarios(prev => prev.map(x => x.id === id ? { ...x, activo: !x.activo } : x))
     try {
       const res = await authFetch(`/usuarios/${id}`, {
@@ -317,14 +389,33 @@ export default function AdminUsuarios() {
         body: JSON.stringify({ activo: !u.activo }),
       })
       if (res.ok) {
+        const actualizado = normalizeUser(await res.json())
+        setUsuarios(prev => prev.map(x => x.id === id ? actualizado : x))
         showToast(u.activo ? 'Usuario desactivado.' : 'Usuario activado.')
       } else {
-        // Revertir si falla
+        const err = await res.json().catch(() => ({}))
         setUsuarios(prev => prev.map(x => x.id === id ? { ...x, activo: u.activo } : x))
-        showToast('Error al cambiar el estado del usuario.', false)
+        showToast(err.detail ?? 'Error al cambiar el estado del usuario.', false)
       }
     } catch {
       setUsuarios(prev => prev.map(x => x.id === id ? { ...x, activo: u.activo } : x))
+      showToast('Error de conexión.', false)
+    }
+  }
+
+  async function desbloquear(id) {
+    try {
+      const res = await authFetch(`/usuarios/${id}/desbloquear`, { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json()
+        const actualizado = normalizeUser({ ...data })
+        setUsuarios(prev => prev.map(x => x.id === id ? { ...x, ...actualizado } : x))
+        setModal({ modo: 'pass-temp', usuario: actualizado, password: data.password_temporal })
+      } else {
+        const err = await res.json().catch(() => ({}))
+        showToast(err.detail ?? 'Error al desbloquear el usuario.', false)
+      }
+    } catch {
       showToast('Error de conexión.', false)
     }
   }
@@ -333,6 +424,10 @@ export default function AdminUsuarios() {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortCol(col); setSortDir('asc') }
   }
+
+  const nActivos    = usuarios.filter(u => u.activo && !u.bloqueado).length
+  const nInactivos  = usuarios.filter(u => !u.activo && !u.bloqueado).length
+  const nBloqueados = usuarios.filter(u => u.bloqueado).length
 
   const filtrados = useMemo(() => {
     let list = [...usuarios]
@@ -344,9 +439,10 @@ export default function AdminUsuarios() {
         u.email?.toLowerCase().includes(q)
       )
     }
-    if (filtroRol !== 'todos')     list = list.filter(u => u.rol_key === filtroRol)
-    if (filtroAct === 'activos')   list = list.filter(u => u.activo)
-    if (filtroAct === 'inactivos') list = list.filter(u => !u.activo)
+    if (filtroRol !== 'todos')       list = list.filter(u => u.rol_key === filtroRol)
+    if (filtroAct === 'activos')     list = list.filter(u => u.activo && !u.bloqueado)
+    if (filtroAct === 'inactivos')   list = list.filter(u => !u.activo && !u.bloqueado)
+    if (filtroAct === 'bloqueados')  list = list.filter(u => u.bloqueado)
     list.sort((a, b) => {
       let va = '', vb = ''
       if (sortCol === 'nombre') { va = `${a.nombre} ${a.apellido}`; vb = `${b.nombre} ${b.apellido}` }
@@ -373,9 +469,6 @@ export default function AdminUsuarios() {
     )
   }
 
-  const nActivos   = usuarios.filter(u => u.activo).length
-  const nInactivos = usuarios.filter(u => !u.activo).length
-
   return (
     <div>
       <div className={`toast ${toast.msg ? 'visible' : ''} ${!toast.ok ? 'error' : ''}`}>{toast.msg}</div>
@@ -385,6 +478,7 @@ export default function AdminUsuarios() {
           <div style={{ fontSize: 20, fontWeight: 700 }}>Usuarios</div>
           <div className="ts tm" style={{ marginTop: 3 }}>
             {usuarios.length} registrados · {nActivos} activos · {nInactivos} inactivos
+            {nBloqueados > 0 && <span style={{ color: 'var(--rd)', fontWeight: 600 }}> · {nBloqueados} bloqueados</span>}
           </div>
         </div>
         <button className="btn btn-p btn-sm" onClick={() => setModal({ modo: 'crear', usuario: null })}>
@@ -408,9 +502,10 @@ export default function AdminUsuarios() {
           </select>
           <div className="flex ic g6" style={{ flex: '0 0 auto' }}>
             {[
-              { val: 'todos',     label: `Todos (${usuarios.length})` },
-              { val: 'activos',   label: `Activos (${nActivos})` },
-              { val: 'inactivos', label: `Inactivos (${nInactivos})` },
+              { val: 'todos',      label: `Todos (${usuarios.length})` },
+              { val: 'activos',    label: `Activos (${nActivos})` },
+              { val: 'inactivos',  label: `Inactivos (${nInactivos})` },
+              { val: 'bloqueados', label: `Bloqueados (${nBloqueados})` },
             ].map(op => (
               <button key={op.val}
                 className={`btn btn-sm ${filtroAct === op.val ? 'btn-p' : 'btn-s'}`}
@@ -444,24 +539,30 @@ export default function AdminUsuarios() {
                     textTransform: 'uppercase', letterSpacing: '0.06em', background: 'var(--bg)', textAlign: 'center' }}>
                     Estado
                   </th>
-                  <th style={{ padding: '10px 14px', background: 'var(--bg)', width: 80 }} />
+                  <th style={{ padding: '10px 14px', background: 'var(--bg)', width: 100 }} />
                 </tr>
               </thead>
               <tbody>
                 {filtrados.map((u, idx) => {
-                  const rol = getRolMeta(u.rol_key)
+                  const rol    = getRolMeta(u.rol_key)
+                  const estado = getEstadoBadge(u)
+                  const esActivo = u.activo && !u.bloqueado
                   return (
                     <tr key={u.id} style={{
                       borderBottom: idx < filtrados.length - 1 ? '1px solid var(--border)' : 'none',
-                      background: !u.activo ? 'rgba(0,0,0,0.015)' : undefined,
+                      background: u.bloqueado
+                        ? 'rgba(220,38,38,0.04)'
+                        : !u.activo
+                          ? 'rgba(0,0,0,0.015)'
+                          : undefined,
                     }}>
                       <td style={{ padding: '12px 14px' }}>
                         <div className="flex ic g10">
-                          <div className={`av ${rol.avClass}`} style={{ width: 32, height: 32, fontSize: 11, opacity: u.activo ? 1 : 0.5 }}>
+                          <div className={`av ${rol.avClass}`} style={{ width: 32, height: 32, fontSize: 11, opacity: esActivo ? 1 : 0.5 }}>
                             {getInitials(u.nombre, u.apellido)}
                           </div>
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: u.activo ? 'var(--text)' : 'var(--text3)' }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: esActivo ? 'var(--text)' : 'var(--text3)' }}>
                               {u.nombre} {u.apellido}
                             </div>
                             <div className="txs tm">Alta: {formatFecha(u.fecha_alta)}</div>
@@ -476,9 +577,7 @@ export default function AdminUsuarios() {
                         {formatHace(u.ultimo_acceso)}
                       </td>
                       <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        <span className={`chip ${u.activo ? 'ch-teal' : 'ch-gray'}`}>
-                          {u.activo ? 'Activo' : 'Inactivo'}
-                        </span>
+                        <span className={`chip ${estado.cls}`}>{estado.label}</span>
                       </td>
                       <td style={{ padding: '12px 14px', textAlign: 'right' }}>
                         <div className="flex ic g4" style={{ justifyContent: 'flex-end' }}>
@@ -486,11 +585,20 @@ export default function AdminUsuarios() {
                             onClick={() => setModal({ modo: 'editar', usuario: u })}>
                             <IcoEdit />
                           </button>
-                          <button className={`btn btn-xs ${u.activo ? 'btn-rd' : 'btn-am'}`}
-                            title={u.activo ? 'Desactivar' : 'Activar'}
-                            onClick={() => toggleActivo(u.id)}>
-                            <IcoToggle />
-                          </button>
+                          {u.bloqueado ? (
+                            /* Botón Desbloquear — solo visible cuando está bloqueado */
+                            <button className="btn btn-am btn-xs" title="Desbloquear y generar nueva contraseña"
+                              onClick={() => desbloquear(u.id)}>
+                              <IcoUnlock />
+                            </button>
+                          ) : (
+                            /* Botón Activar / Desactivar — solo cuando no está bloqueado */
+                            <button className={`btn btn-xs ${u.activo ? 'btn-rd' : 'btn-am'}`}
+                              title={u.activo ? 'Desactivar' : 'Activar'}
+                              onClick={() => toggleActivo(u.id)}>
+                              <IcoToggle />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -508,8 +616,14 @@ export default function AdminUsuarios() {
         )}
       </div>
 
-      {modal && (
+      {modal?.modo === 'crear' && (
+        <ModalUsuario usuario={null} onClose={() => setModal(null)} onSave={handleSave} />
+      )}
+      {modal?.modo === 'editar' && (
         <ModalUsuario usuario={modal.usuario} onClose={() => setModal(null)} onSave={handleSave} />
+      )}
+      {modal?.modo === 'pass-temp' && (
+        <ModalPassTemporal usuario={modal.usuario} password={modal.password} onClose={() => setModal(null)} />
       )}
     </div>
   )
