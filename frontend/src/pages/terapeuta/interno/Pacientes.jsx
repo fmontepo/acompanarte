@@ -61,20 +61,50 @@ function sexoLabel(s) {
 function ModalPaciente({ paciente, onClose, onSaved, authFetch }) {
   const esEdicion = !!paciente
   const [form, setForm] = useState({
-    nombre:          paciente?.nombre           || '',
-    apellido:        paciente?.apellido         || '',
-    fecha_nacimiento: paciente?.fecha_nacimiento || '',
-    sexo:            paciente?.sexo             || '',
-    activo:          paciente?.activo           ?? true,
+    nombre:            paciente?.nombre           || '',
+    apellido:          paciente?.apellido         || '',
+    fecha_nacimiento:  paciente?.fecha_nacimiento || '',
+    sexo:              paciente?.sexo             || '',
+    activo:            paciente?.activo           ?? true,
   })
+  // Familiar a cargo (solo en alta)
+  const [familiares,       setFamiliares]       = useState([])
+  const [parentescos,      setParentescos]      = useState([])
+  const [loadingFam,       setLoadingFam]       = useState(false)
+  const [familiar, setFamiliar] = useState({
+    familiar_id:       '',
+    id_parentesco:     '',
+    es_tutor_legal:    false,
+    autorizado_medico: false,
+  })
+
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
 
+  // Cargamos familiares y parentescos sólo en modo alta
+  useEffect(() => {
+    if (esEdicion) return
+    setLoadingFam(true)
+    Promise.all([
+      authFetch('/pacientes/familiares-disponibles'),
+      authFetch('/pacientes/parentescos'),
+    ]).then(async ([resFam, resPar]) => {
+      setFamiliares(resFam.ok ? await resFam.json() : [])
+      setParentescos(resPar.ok ? await resPar.json() : [])
+    }).finally(() => setLoadingFam(false))
+  }, [esEdicion, authFetch])
+
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
+  function setFam(k, v) { setFamiliar(f => ({ ...f, [k]: v })) }
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.nombre.trim()) { setError('El nombre es obligatorio.'); return }
+    // Si eligió familiar pero no parentesco, alertar
+    if (!esEdicion && familiar.familiar_id && !familiar.id_parentesco) {
+      setError('Seleccioná el parentesco del familiar.')
+      return
+    }
     setSaving(true); setError('')
     try {
       const payload = {
@@ -85,9 +115,9 @@ function ModalPaciente({ paciente, onClose, onSaved, authFetch }) {
       }
       if (esEdicion) payload.activo = form.activo
 
-      const method  = esEdicion ? 'PATCH' : 'POST'
-      const url     = esEdicion ? `/pacientes/${paciente.id}` : '/pacientes/'
-      const res     = await authFetch(url, {
+      const method = esEdicion ? 'PATCH' : 'POST'
+      const url    = esEdicion ? `/pacientes/${paciente.id}` : '/pacientes/'
+      const res    = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -96,7 +126,21 @@ function ModalPaciente({ paciente, onClose, onSaved, authFetch }) {
         const d = await res.json().catch(() => ({}))
         throw new Error(d.detail || 'Error al guardar')
       }
-      const saved = await res.json()
+      let saved = await res.json()
+
+      // Si es alta y se eligió familiar, vincular automáticamente
+      if (!esEdicion && familiar.familiar_id && familiar.id_parentesco) {
+        const resVinc = await authFetch(`/pacientes/${saved.id}/vincular-familiar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(familiar),
+        })
+        if (resVinc.ok) {
+          saved = await resVinc.json()  // versión actualizada con vínculo
+        }
+        // Si falla el vínculo no bloqueamos; el paciente ya fue creado
+      }
+
       onSaved(saved)
     } catch (err) {
       setError(err.message)
@@ -119,6 +163,8 @@ function ModalPaciente({ paciente, onClose, onSaved, authFetch }) {
                 borderRadius: 8, padding: '10px 14px', marginBottom: 14,
                 color: 'var(--danger)', fontSize: 13 }}>{error}</div>
             )}
+
+            {/* ── Datos del paciente ── */}
             <div className="fg">
               <label className="fl">Nombre *</label>
               <input className="fi" value={form.nombre}
@@ -154,6 +200,83 @@ function ModalPaciente({ paciente, onClose, onSaved, authFetch }) {
                   <option value="0">Inactivo</option>
                 </select>
               </div>
+            )}
+
+            {/* ── Familiar a cargo (solo en alta) ── */}
+            {!esEdicion && (
+              <>
+                <div style={{
+                  borderTop: '1px solid var(--border)',
+                  marginTop: 6,
+                  paddingTop: 14,
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
+                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                    Familiar a cargo <span style={{ fontWeight: 400, textTransform: 'none',
+                      letterSpacing: 0, color: 'var(--text-muted)' }}>(opcional)</span>
+                  </div>
+                  {loadingFam ? (
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '4px 0' }}>
+                      Cargando familiares…
+                    </div>
+                  ) : familiares.length === 0 ? (
+                    <div style={{
+                      fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic',
+                      background: 'var(--surface-2, rgba(0,0,0,0.03))',
+                      border: '1px solid var(--border)', borderRadius: 7,
+                      padding: '8px 12px',
+                    }}>
+                      No hay usuarios con rol Familia registrados. Podés vincular un familiar más tarde.
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div className="fg" style={{ margin: 0 }}>
+                          <label className="fl">Familiar</label>
+                          <select className="fs" value={familiar.familiar_id}
+                            onChange={e => setFam('familiar_id', e.target.value)}>
+                            <option value="">Sin asignar</option>
+                            {familiares.map(f => (
+                              <option key={f.familiar_id} value={f.familiar_id}>
+                                {f.nombre_completo}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="fg" style={{ margin: 0 }}>
+                          <label className="fl">Parentesco</label>
+                          <select className="fs" value={familiar.id_parentesco}
+                            onChange={e => setFam('id_parentesco', e.target.value)}
+                            disabled={!familiar.familiar_id}>
+                            <option value="">Seleccioná…</option>
+                            {parentescos.map(p => (
+                              <option key={p.id} value={p.id}>{p.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      {familiar.familiar_id && (
+                        <div style={{ display: 'flex', gap: 20, marginTop: 10 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8,
+                            cursor: 'pointer', fontSize: 13 }}>
+                            <input type="checkbox" checked={familiar.es_tutor_legal}
+                              onChange={e => setFam('es_tutor_legal', e.target.checked)}
+                              style={{ width: 15, height: 15, cursor: 'pointer' }} />
+                            Tutor/a legal
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8,
+                            cursor: 'pointer', fontSize: 13 }}>
+                            <input type="checkbox" checked={familiar.autorizado_medico}
+                              onChange={e => setFam('autorizado_medico', e.target.checked)}
+                              style={{ width: 15, height: 15, cursor: 'pointer' }} />
+                            Autorizado médico
+                          </label>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
             )}
           </div>
           <div className="mf">
