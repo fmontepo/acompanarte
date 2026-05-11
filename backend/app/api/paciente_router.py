@@ -201,7 +201,7 @@ async def crear_paciente(
     await db.flush()  # genera el id sin commitear todavía
 
     # Si el creador es terapeuta interno, crear equipo y agregarlo como coordinador
-    if current_user.rol_key == "ter-int":
+    if (current_user.rol and current_user.rol.key == "ter-int"):
         ter_res = await db.execute(
             select(Terapeuta).where(Terapeuta.usuario_id == current_user.id)
         )
