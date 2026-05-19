@@ -474,6 +474,9 @@ async def procesar_consulta_ia(
     if fuentes:
         prompt = construir_prompt(mensaje_anonimo, fuentes, reglas)
         respuesta = await generar_respuesta_ollama(prompt)
+    elif genera_alerta:
+        prompt = construir_prompt_alerta_publico(mensaje_anonimo, reglas)
+        respuesta = await generar_respuesta_ollama(prompt)
     else:
         respuesta = (
             "No encontré información específica sobre tu consulta en nuestra "
@@ -560,6 +563,11 @@ async def procesar_consulta_publica(
     if fuentes:
         prompt = construir_prompt_publico(mensaje_anonimo, fuentes, reglas)
         respuesta = await generar_respuesta_ollama(prompt)
+    elif genera_alerta:
+        # Sin bibliografía pero con señal de alerta: Ollama responde con empatía
+        # sin inventar información clínica, validando la preocupación.
+        prompt = construir_prompt_alerta_publico(mensaje_anonimo, reglas)
+        respuesta = await generar_respuesta_ollama(prompt)
     else:
         respuesta = (
             "No encontré información específica sobre tu consulta en nuestra "
@@ -581,6 +589,24 @@ async def procesar_consulta_publica(
 # ---------------------------------------------------------------------------
 # Prompt especializado para consultas públicas (orientación TEA)
 # ---------------------------------------------------------------------------
+def construir_prompt_alerta_publico(consulta: str, reglas: dict | None = None) -> str:
+    """Prompt sin bibliografía, usado cuando hay alerta pero no hay fuentes RAG.
+    Responde con empatía, valida la preocupación y orienta a buscar ayuda profesional."""
+    bloque = _bloque_reglas(reglas or {})
+    reglas_section = f"\n{bloque}\n" if bloque else ""
+    return f"""Eres un asistente de orientación para familias que tienen dudas sobre el desarrollo infantil y el espectro autista (TEA).
+Tu rol es orientar, acompañar y derivar. NUNCA debes diagnosticar ni reemplazar la evaluación profesional.
+{reglas_section}
+La familia describió la siguiente situación:
+{consulta}
+
+Lo que describís es una señal que merece atención profesional. Respondé con empatía y en dos o tres oraciones:
+1. Validá la preocupación de la familia.
+2. Explicá brevemente por qué es importante que un especialista en TEA lo evalúe.
+3. Recordá que pueden solicitar contacto con el equipo de Acompañarte desde este mismo chat.
+No inventes información clínica. Respondé en español."""
+
+
 def construir_prompt_publico(consulta: str, fuentes: list[dict], reglas: dict | None = None) -> str:
     contexto = "\n\n".join(
         f"[Fuente: {f['titulo']}]\n{f['contenido'][:MAX_CHARS_POR_FUENTE]}" for f in fuentes
