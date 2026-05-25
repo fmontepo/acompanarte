@@ -349,7 +349,7 @@ export default function TerIntAsistente() {
           <div>
             <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--purple)' }}>Asistente Clínico</div>
             <div className="txs" style={{ color: 'var(--purple)', opacity: 0.7 }}>
-              Consultas sobre tus pacientes · Bibliografía validada
+              {sending ? 'Procesando tu consulta…' : 'Consultas sobre tus pacientes · Bibliografía validada'}
             </div>
           </div>
         </div>
@@ -365,18 +365,24 @@ export default function TerIntAsistente() {
               <div style={{
                 width: 30, height: 30, borderRadius: '50%', background: 'var(--purple2)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--purple)',
+                flexShrink: 0, marginTop: 2,
               }}><IcoBot /></div>
               <div style={{
                 background: 'var(--bg2)', borderRadius: '4px 14px 14px 14px',
-                padding: '10px 16px', display: 'flex', gap: 5, alignItems: 'center',
+                padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'center',
               }}>
-                {[0,1,2].map(i => (
-                  <div key={i} style={{
-                    width: 7, height: 7, borderRadius: '50%', background: 'var(--purple)',
-                    animation: 'pulse 1.2s ease-in-out infinite',
-                    animationDelay: `${i * 0.2}s`,
-                  }} />
-                ))}
+                <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                  {[0,1,2].map(i => (
+                    <div key={i} style={{
+                      width: 7, height: 7, borderRadius: '50%', background: 'var(--purple)',
+                      animation: 'pulse 1.2s ease-in-out infinite',
+                      animationDelay: `${i * 0.2}s`,
+                    }} />
+                  ))}
+                </div>
+                <span style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>
+                  Analizando tu consulta…
+                </span>
               </div>
             </div>
           )}

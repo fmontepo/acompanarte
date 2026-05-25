@@ -210,3 +210,9 @@ body {
   transform: translateX(-50%) translateY(0);
   opacity: 1;
 }
+
+/* Animación de los tres puntos del indicador de escritura del asistente IA */
+@keyframes pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50%       { opacity: 1;    transform: scale(1.15); }
+}
