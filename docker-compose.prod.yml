@@ -55,7 +55,7 @@ services:
       ALGORITHM:                 HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       OLLAMA_BASE_URL:           http://host.docker.internal:11434
-      OLLAMA_MODEL:              ${OLLAMA_MODEL:-qwen3.5:4b}
+      OLLAMA_MODEL:              ${OLLAMA_MODEL:-qwen2.5:3b}
       EMBEDDING_MODEL:           ${EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
       ENCRYPTION_KEY:            ${ENCRYPTION_KEY}
       HF_HOME:                   /hf_cache
