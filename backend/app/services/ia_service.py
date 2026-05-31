@@ -49,7 +49,8 @@ SIMILARITY_THRESHOLD = 0.22   # ajustado en producción — paraphrase-multiling
 
 # Número máximo de reglas por tipo que se inyectan en el prompt
 # (evita que el bloque de reglas supere el num_ctx del modelo)
-MAX_REGLAS_POR_TIPO = 10
+# qwen2.5:3b tiene 4096 tokens — con reglas cortas (1-2 oraciones) 15 es seguro
+MAX_REGLAS_POR_TIPO = 15
 
 # Palabras/frases que activan el filtro anti-diagnóstico
 PATRONES_DIAGNOSTICO = [
