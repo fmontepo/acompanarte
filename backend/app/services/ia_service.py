@@ -655,8 +655,8 @@ async def procesar_consulta_publica(
     # 2. Detectar señales de alerta
     genera_alerta, _ = detectar_alerta(mensaje_anonimo)
 
-    # 3. Cargar reglas activas y buscar contexto RAG en pgvector
-    reglas = await cargar_reglas(db)
+    # 3. Cargar reglas activas (contexto "publico" + global) y buscar RAG
+    reglas = await cargar_reglas(db, contexto="publico")
     fuentes = await buscar_contexto_rag(db, mensaje_anonimo)
 
     # 4. Generar respuesta via Ollama

@@ -61,6 +61,7 @@ const TIPO_META = {
 
 // ─── Metadatos por contexto ───────────────────────────────────────────────
 const CONTEXTO_META = {
+  publico:    { label: 'Público',    color: '#f59e0b', bg: 'rgba(245,158,11,0.1)'  },
   familiar:   { label: 'Familiar',   color: '#3b82f6', bg: 'rgba(59,130,246,0.1)'  },
   terapeuta:  { label: 'Terapeuta',  color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)'  },
   global:     { label: 'Global',     color: '#64748b', bg: 'rgba(100,116,139,0.1)' },
@@ -467,10 +468,11 @@ function PanelTipo({ tipo, reglas, contextoFiltro, onCreada, onActualizada, onEl
 
 // ─── Página principal ─────────────────────────────────────────────────────
 const TABS = [
-  { key: 'todos',    label: 'Todos los módulos' },
-  { key: 'familiar', label: 'Módulo Familiar' },
-  { key: 'terapeuta',label: 'Módulo Terapeuta' },
-  { key: 'global',   label: 'Global (ambos)' },
+  { key: 'todos',     label: 'Todos los módulos' },
+  { key: 'publico',   label: 'Módulo Público'    },
+  { key: 'familiar',  label: 'Módulo Familiar'   },
+  { key: 'terapeuta', label: 'Módulo Terapeuta'  },
+  { key: 'global',    label: 'Global (todos)'    },
 ]
 
 export default function AdminReglasIA() {
@@ -536,14 +538,13 @@ export default function AdminReglasIA() {
         borderRadius: 10, padding: '12px 16px', marginBottom: 20,
         fontSize: 13, color: 'var(--text)', lineHeight: 1.6,
       }}>
-        <strong>¿Cómo funciona?</strong> Las reglas se aplican por módulo: las del módulo{' '}
-        <span style={{ color: '#3b82f6', fontWeight: 600 }}>Familiar</span> guían al asistente
-        para familias <strong>y también al asistente público</strong> (sin login), las del módulo{' '}
-        <span style={{ color: '#8b5cf6', fontWeight: 600 }}>Terapeuta</span> al asistente
-        clínico, y las{' '}
-        <span style={{ color: '#64748b', fontWeight: 600 }}>Globales</span> aplican a todos.
+        <strong>¿Cómo funciona?</strong> Cada módulo tiene su propio conjunto de reglas:{' '}
+        <span style={{ color: '#f59e0b', fontWeight: 600 }}>Público</span> aplica al asistente sin login (visitantes sin cuenta),{' '}
+        <span style={{ color: '#3b82f6', fontWeight: 600 }}>Familiar</span> al asistente de familias registradas,{' '}
+        <span style={{ color: '#8b5cf6', fontWeight: 600 }}>Terapeuta</span> al asistente clínico interno, y{' '}
+        <span style={{ color: '#64748b', fontWeight: 600 }}>Global</span> aplica a todos los módulos.
         Las <span style={{ color: 'var(--teal)', fontWeight: 600 }}>reglas positivas</span> definen
-        sobre qué puede orientar. Las{' '}
+        qué puede responder. Las{' '}
         <span style={{ color: 'var(--red)', fontWeight: 600 }}>negativas</span> establecen restricciones.
         El modelo procesa un máximo de <strong>15 reglas activas por tipo</strong>, ordenadas por prioridad.
       </div>

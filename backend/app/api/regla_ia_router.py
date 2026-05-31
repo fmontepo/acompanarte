@@ -29,9 +29,11 @@ router = APIRouter(
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
+CONTEXTOS_VALIDOS = ("publico", "familiar", "terapeuta", "global")
+
 class ReglaCreate(BaseModel):
     tipo: str           # 'positiva' | 'negativa'
-    contexto: str = "global"   # 'familiar' | 'terapeuta' | 'global'
+    contexto: str = "global"   # 'publico' | 'familiar' | 'terapeuta' | 'global'
     texto: str
     descripcion: Optional[str] = None
     activa: bool = True
@@ -72,7 +74,7 @@ async def listar_reglas(
     q = select(ReglaIA).order_by(ReglaIA.contexto, ReglaIA.tipo, ReglaIA.orden, ReglaIA.creado_en)
     if tipo in ("positiva", "negativa"):
         q = q.where(ReglaIA.tipo == tipo)
-    if contexto in ("familiar", "terapeuta", "global"):
+    if contexto in CONTEXTOS_VALIDOS:
         q = q.where(ReglaIA.contexto == contexto)
     if solo_activas:
         q = q.where(ReglaIA.activa == True)
@@ -87,8 +89,8 @@ async def crear_regla(
 ):
     if body.tipo not in ("positiva", "negativa"):
         raise HTTPException(400, detail="tipo debe ser 'positiva' o 'negativa'")
-    if body.contexto not in ("familiar", "terapeuta", "global"):
-        raise HTTPException(400, detail="contexto debe ser 'familiar', 'terapeuta' o 'global'")
+    if body.contexto not in CONTEXTOS_VALIDOS:
+        raise HTTPException(400, detail="contexto debe ser 'publico', 'familiar', 'terapeuta' o 'global'")
     if not body.texto.strip():
         raise HTTPException(400, detail="El texto de la regla no puede estar vacío")
 
@@ -124,8 +126,8 @@ async def editar_regla(
     if body.descripcion is not None:
         regla.descripcion = body.descripcion.strip() or None
     if body.contexto is not None:
-        if body.contexto not in ("familiar", "terapeuta", "global"):
-            raise HTTPException(400, detail="contexto debe ser 'familiar', 'terapeuta' o 'global'")
+        if body.contexto not in CONTEXTOS_VALIDOS:
+            raise HTTPException(400, detail="contexto debe ser 'publico', 'familiar', 'terapeuta' o 'global'")
         regla.contexto = body.contexto
     if body.activa is not None:
         regla.activa = body.activa
