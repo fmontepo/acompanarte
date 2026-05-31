@@ -22,12 +22,14 @@ log = logging.getLogger(__name__)
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sentence_transformers import SentenceTransformer
 
 from app.models.recursoProfesional import RecursoProfesional
 from app.models.registroSeguimiento import RegistroSeguimiento
 from app.models.actividadFamiliar import ActividadFamiliar
 from app.models.progresoActividad import ProgresoActividad
+from app.models.vinculoPaciente import VinculoPaciente
 from app.models.ia import SesionIA, MensajeIA
 from app.models.alerta import Alerta
 from app.models.regla_ia import ReglaIA
@@ -452,6 +454,112 @@ def detectar_alerta(texto: str) -> tuple[bool, str]:
 
 
 # ---------------------------------------------------------------------------
+# Contexto SQL del familiar — actividades y progresos reales desde la BD
+# ---------------------------------------------------------------------------
+async def _contexto_familiar_sql(
+    db: AsyncSession,
+    familiar_id: UUID,
+) -> tuple[str, list]:
+    """
+    Consulta las actividades asignadas y los progresos registrados del familiar.
+    Retorna (texto_contexto, lista_pac_ids).
+    No accede a registros clínicos del terapeuta (privados).
+    """
+    # Pacientes vinculados al familiar
+    res = await db.execute(
+        select(VinculoPaciente.paciente_id)
+        .where(VinculoPaciente.familiar_id == familiar_id)
+        .where(VinculoPaciente.activo == True)
+    )
+    pac_ids = [r[0] for r in res.all()]
+
+    if not pac_ids:
+        return "No hay pacientes vinculados a esta cuenta.", []
+
+    # Actividades terapéuticas activas para esos pacientes
+    res = await db.execute(
+        select(ActividadFamiliar)
+        .where(ActividadFamiliar.paciente_id.in_(pac_ids))
+        .where(ActividadFamiliar.activa == True)
+        .order_by(ActividadFamiliar.creado_en.desc())
+        .limit(10)
+    )
+    actividades = res.scalars().all()
+
+    # Progresos recientes registrados por este familiar
+    res = await db.execute(
+        select(ProgresoActividad)
+        .where(ProgresoActividad.familiar_id == familiar_id)
+        .options(selectinload(ProgresoActividad.actividad))
+        .order_by(ProgresoActividad.completada_en.desc())
+        .limit(10)
+    )
+    progresos = res.scalars().all()
+
+    lineas = []
+
+    if actividades:
+        lineas.append("=== ACTIVIDADES TERAPÉUTICAS ASIGNADAS ===")
+        for a in actividades:
+            lineas.append(f"• {a.titulo} — Frecuencia: {a.frecuencia}")
+            if a.objetivo:
+                lineas.append(f"  Objetivo: {a.objetivo}")
+    else:
+        lineas.append("=== ACTIVIDADES: ninguna asignada aún ===")
+
+    if progresos:
+        lineas.append("\n=== REGISTROS DE PROGRESO RECIENTES ===")
+        for p in progresos:
+            titulo = p.actividad.titulo if p.actividad else "Actividad"
+            resultado = "Completa" if p.es_completada else f"Parcial ({p.etapas_completadas or 0} etapas)"
+            fecha = p.completada_en.strftime("%d/%m/%Y") if p.completada_en else "—"
+            satisfaccion = f" · Satisfacción {p.nivel_satisfaccion}/5" if p.nivel_satisfaccion else ""
+            lineas.append(f"• [{fecha}] {titulo}: {resultado}{satisfaccion}")
+            if p.observacion:
+                lineas.append(f"  Nota: {p.observacion[:200]}")
+    else:
+        lineas.append("\n=== PROGRESO: sin sesiones registradas aún ===")
+
+    return "\n".join(lineas), pac_ids
+
+
+def construir_prompt_familiar(
+    consulta: str,
+    contexto_paciente: str,
+    fuentes: list[dict],
+    reglas: dict | None = None,
+) -> str:
+    """
+    Prompt para el asistente del familiar autenticado.
+    Incluye datos reales del paciente (actividades + progreso) y bibliografía opcional.
+    Instrucción explícita: NUNCA inventar datos.
+    """
+    bloque = _bloque_reglas(reglas or {})
+    reglas_section = f"\n{bloque}\n" if bloque else ""
+
+    biblio_section = ""
+    if fuentes:
+        contexto_biblio = "\n\n".join(
+            f"[{f['titulo']}]\n{f['contenido'][:MAX_CHARS_POR_FUENTE]}" for f in fuentes
+        )
+        biblio_section = f"\n--- BIBLIOGRAFÍA DE APOYO ---\n{contexto_biblio}\n--- FIN BIBLIOGRAFÍA ---\n"
+
+    return f"""Eres un asistente de apoyo para familias con personas en el espectro autista (TEA).
+Tu rol es orientar y acompañar basándote EXCLUSIVAMENTE en los datos reales provistos.
+NUNCA inventes datos, nombres de profesionales, diagnósticos ni avances no registrados.
+Si no tenés información suficiente para responder, decilo claramente y sugerí consultar al equipo terapéutico.
+{reglas_section}
+--- DATOS REALES DEL PACIENTE ---
+{contexto_paciente}
+--- FIN DATOS ---
+{biblio_section}
+Consulta del familiar:
+{consulta}
+
+Respondé en español, con empatía, basándote únicamente en los datos reales provistos."""
+
+
+# ---------------------------------------------------------------------------
 # Pipeline completo — punto de entrada principal
 # ---------------------------------------------------------------------------
 async def procesar_consulta_ia(
@@ -466,23 +574,14 @@ async def procesar_consulta_ia(
     # 2. Detectar alerta en el mensaje del usuario
     genera_alerta, tipo_alerta = detectar_alerta(mensaje_anonimo)
 
-    # 3. Cargar reglas activas y buscar contexto RAG en pgvector
+    # 3. Cargar reglas, contexto real del paciente y RAG bibliográfico en paralelo
     reglas = await cargar_reglas(db)
+    contexto_paciente, _ = await _contexto_familiar_sql(db, familiar_id)
     fuentes = await buscar_contexto_rag(db, mensaje_anonimo)
 
-    # 4. Generar respuesta via Ollama
-    if fuentes:
-        prompt = construir_prompt(mensaje_anonimo, fuentes, reglas)
-        respuesta = await generar_respuesta_ollama(prompt)
-    elif genera_alerta:
-        prompt = construir_prompt_alerta_publico(mensaje_anonimo, reglas)
-        respuesta = await generar_respuesta_ollama(prompt)
-    else:
-        respuesta = (
-            "No encontré información específica sobre tu consulta en nuestra "
-            "bibliografía validada. Te recomiendo consultar directamente con "
-            "el terapeuta de tu equipo."
-        )
+    # 4. Generar respuesta via Ollama siempre con datos reales del paciente
+    prompt = construir_prompt_familiar(mensaje_anonimo, contexto_paciente, fuentes, reglas)
+    respuesta = await generar_respuesta_ollama(prompt)
 
     # 5. Filtro anti-diagnóstico
     respuesta, filtro_aplicado = aplicar_filtro_diagnostico(respuesta)
