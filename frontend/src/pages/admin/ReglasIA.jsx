@@ -356,10 +356,19 @@ function ItemRegla({ regla, onActualizada, onEliminada }) {
 }
 
 // ─── Panel por tipo ───────────────────────────────────────────────────────
+const MAX_REGLAS = 15
+
 function PanelTipo({ tipo, reglas, contextoFiltro, onCreada, onActualizada, onEliminada }) {
   const meta            = TIPO_META[tipo]
   const [agregando, setAgregando] = useState(false)
-  const activas = reglas.filter(r => r.activa).length
+  const activas   = reglas.filter(r => r.activa).length
+  const limitado  = activas >= MAX_REGLAS
+  const cercaLim  = activas >= MAX_REGLAS - 3 && !limitado
+
+  // Color del contador según proximidad al límite
+  const contadorColor  = limitado ? 'var(--red)' : cercaLim ? 'var(--amber)' : meta.accentColor
+  const contadorBg     = limitado ? 'rgba(163,45,45,0.08)' : cercaLim ? 'rgba(180,130,0,0.08)' : meta.bgColor
+  const contadorBorder = limitado ? 'rgba(163,45,45,0.3)'  : cercaLim ? 'rgba(180,130,0,0.3)'  : meta.borderColor
 
   return (
     <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -377,20 +386,49 @@ function PanelTipo({ tipo, reglas, contextoFiltro, onCreada, onActualizada, onEl
         <div className="flex ic g8">
           <span style={{
             fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-            background: meta.bgColor, color: meta.accentColor,
-            border: `1px solid ${meta.borderColor}`,
-          }}>
-            {activas} activa{activas !== 1 ? 's' : ''} / {reglas.length}
+            background: contadorBg, color: contadorColor,
+            border: `1px solid ${contadorBorder}`,
+          }}
+            title={`Límite: ${MAX_REGLAS} reglas activas por tipo`}
+          >
+            {activas} / {MAX_REGLAS} activas
           </span>
           <button
             className="btn btn-sm"
-            style={{ fontSize: 12, background: meta.accentColor, color: '#fff', border: 'none' }}
-            onClick={() => setAgregando(true)}
+            style={{
+              fontSize: 12,
+              background: limitado ? 'var(--border)' : meta.accentColor,
+              color: limitado ? 'var(--text3)' : '#fff',
+              border: 'none',
+              cursor: limitado ? 'not-allowed' : 'pointer',
+            }}
+            onClick={() => !limitado && setAgregando(true)}
+            title={limitado ? `Límite de ${MAX_REGLAS} reglas activas alcanzado. Desactivá o eliminá alguna para agregar más.` : 'Agregar regla'}
+            disabled={limitado}
           >
             <IcoPlus /> Agregar
           </button>
         </div>
       </div>
+
+      {/* Aviso de límite alcanzado */}
+      {limitado && (
+        <div style={{
+          fontSize: 12, color: 'var(--red)', background: 'rgba(163,45,45,0.07)',
+          border: '1px solid rgba(163,45,45,0.2)', borderRadius: 6, padding: '7px 10px',
+        }}>
+          ⚠️ Límite de <strong>{MAX_REGLAS} reglas activas</strong> alcanzado. El modelo solo procesa {MAX_REGLAS} por tipo.
+          Desactivá o eliminá alguna para poder agregar más.
+        </div>
+      )}
+      {cercaLim && (
+        <div style={{
+          fontSize: 12, color: 'var(--amber)', background: 'rgba(180,130,0,0.07)',
+          border: '1px solid rgba(180,130,0,0.2)', borderRadius: 6, padding: '7px 10px',
+        }}>
+          Cerca del límite — el modelo procesa un máximo de <strong>{MAX_REGLAS} reglas activas</strong> por tipo.
+        </div>
+      )}
 
       {/* Lista de reglas */}
       {reglas.length === 0 && !agregando && (
@@ -500,13 +538,14 @@ export default function AdminReglasIA() {
       }}>
         <strong>¿Cómo funciona?</strong> Las reglas se aplican por módulo: las del módulo{' '}
         <span style={{ color: '#3b82f6', fontWeight: 600 }}>Familiar</span> guían al asistente
-        para familias, las del módulo{' '}
+        para familias <strong>y también al asistente público</strong> (sin login), las del módulo{' '}
         <span style={{ color: '#8b5cf6', fontWeight: 600 }}>Terapeuta</span> al asistente
         clínico, y las{' '}
-        <span style={{ color: '#64748b', fontWeight: 600 }}>Globales</span> aplican a ambos.
+        <span style={{ color: '#64748b', fontWeight: 600 }}>Globales</span> aplican a todos.
         Las <span style={{ color: 'var(--teal)', fontWeight: 600 }}>reglas positivas</span> definen
         sobre qué puede orientar. Las{' '}
         <span style={{ color: 'var(--red)', fontWeight: 600 }}>negativas</span> establecen restricciones.
+        El modelo procesa un máximo de <strong>15 reglas activas por tipo</strong>, ordenadas por prioridad.
       </div>
 
       {/* ── Tabs por contexto ───────────────────────────────────── */}
