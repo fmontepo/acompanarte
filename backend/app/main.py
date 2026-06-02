@@ -24,7 +24,7 @@ from app.api.registro_router import router as registro_router
 from app.api.permiso_router import router as permiso_router
 from app.api.actividad_router import router as actividad_router
 from app.api.progreso_router import router as progreso_router
-from app.api.sesion_ia_router import router as sesion_ia_router, reglas_router
+from app.api.sesion_ia_router import router as sesion_ia_router
 from app.api.mensaje_ia_router import router as mensaje_ia_router
 from app.api.alerta_router import router as alerta_router
 from app.api.recurso_router import router as recurso_router
@@ -362,7 +362,6 @@ app.include_router(permiso_router,         prefix=PREFIX)
 app.include_router(actividad_router,       prefix=PREFIX)
 app.include_router(progreso_router,        prefix=PREFIX)
 app.include_router(sesion_ia_router,       prefix=PREFIX)
-app.include_router(reglas_router,          prefix=PREFIX)
 app.include_router(mensaje_ia_router,      prefix=PREFIX)
 app.include_router(alerta_router,          prefix=PREFIX)
 app.include_router(recurso_router,         prefix=PREFIX)
