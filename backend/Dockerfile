@@ -22,10 +22,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # --- Copiar e instalar dependencias Python PRIMERO (aprovecha caché de Docker) ---
 # Si requirements.txt no cambia, esta capa no se reconstruye
-COPY requirements.txt requirements-test.txt ./
+# requirements-test.txt NO se instala en producción (solo en desarrollo local)
+COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -r requirements-test.txt
+    pip install --no-cache-dir -r requirements.txt
 
 # --- Copiar el código fuente ---
 COPY . .
