@@ -10,14 +10,24 @@
 
 from typing import Optional
 from uuid import UUID
+import json
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_roles
 from app.db.session import get_db
+
+
+def _json_serial(obj):
+    """Serializa tipos no soportados por json.dumps (datetime, UUID)."""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return str(obj)
 from app.models.regla_ia import ReglaIA
 
 router = APIRouter(
@@ -79,7 +89,8 @@ async def listar_reglas(
     if solo_activas:
         q = q.where(ReglaIA.activa == True)
     result = await db.execute(q)
-    return [_serialize(r) for r in result.scalars().all()]
+    data = [_serialize(r) for r in result.scalars().all()]
+    return JSONResponse(content=json.loads(json.dumps(data, default=_json_serial)))
 
 
 @router.post("", summary="Crear regla de IA", status_code=201)
