@@ -21,6 +21,21 @@ services:
       timeout: 5s
       retries: 5
 
+  ollama:
+    image: ollama/ollama
+    container_name: acompanarte_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
   backend:
     build:
       context: ./backend
@@ -29,6 +44,8 @@ services:
     restart: unless-stopped
     depends_on:
       db:
+        condition: service_healthy
+      ollama:
         condition: service_healthy
     ports:
       - "8000:8000"
@@ -41,14 +58,12 @@ services:
       SECRET_KEY: ${SECRET_KEY:-cambia_esto_en_produccion}
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
-      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-cambia_esto_en_produccion}
       HF_HOME: /hf_cache
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   pgadmin:
     image: dpage/pgadmin4
@@ -84,3 +99,4 @@ volumes:
   postgres_data:
   hf_cache:       # modelo de embeddings — persiste entre reinicios del contenedor
   pgadmin_data:   # configuración y conexiones guardadas de pgAdmin
+  ollama_data:    # modelos de Ollama — persiste entre reinicios del contenedor
